@@ -9,7 +9,8 @@ class Engine:
         self.db = db
         self.logger = logger
         self.modules = {}
-        self._callbacks = {"scan_progress": [], "scan_complete": [], "log": []}
+        self._scanning = False
+        self._callbacks = {"scan_progress": [], "scan_complete": [], "log": [], "vuln_found": []}
         self.logger.info("引擎初始化完成")
 
     def register_module(self, name, module_instance):

@@ -176,6 +176,24 @@ class MainWindow(QMainWindow):
         self.logger.on_message(self.terminal.write_log)
         self.terminal.command_entered.connect(self._handle_command)
 
+        # Toast notifications for engine events
+        self.engine.on("scan_complete", self._on_scan_complete_toast)
+        self.engine.on("vuln_found", self._on_vuln_found_toast)
+
+    def _on_scan_complete_toast(self, target, count):
+        from gui.widgets.toast import show_toast
+        if count > 0:
+            show_toast(self, f"扫描完成: {target} — {count} 个开放端口", "success")
+        elif count == -1:
+            show_toast(self, f"全面扫描完成: {target}", "success")
+        else:
+            show_toast(self, f"扫描完成: {target} — 未发现开放端口", "info")
+
+    def _on_vuln_found_toast(self, severity, title):
+        from gui.widgets.toast import show_toast
+        level = "error" if severity in ("CRITICAL", "HIGH") else "info"
+        show_toast(self, f"[{severity}] {title}", level)
+
     def _on_nav_clicked(self):
         sender = self.sender()
         if not sender:

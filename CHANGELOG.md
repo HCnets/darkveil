@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.1.0 (2026-05-27)
+
+### 缺陷修复
+- 代理支持打通：所有 HTTP 利用模块（24个中的12个）现在正确使用 http_utils 共享 Session，代理配置生效
+- rdp_brute 空壳修复：集成 xfreerdp 进行真实 RDP 爆破（需安装 xfreerdp）
+- smb_brute 空壳修复：集成 impacket 进行 SMB 认证爆破（需安装 impacket），含空会话检测
+- AutoPilot 攻击链接入 cve_checker 模块，自动检测 CVE/框架漏洞
+- Dashboard refresh() 异常处理改进，不再静默吞掉错误
+
+### Dashboard 增强
+- QTimer 每 15 秒自动刷新，无需手动切页
+- 新增漏洞趋势折线图（近 30 天，调用 get_vuln_timeline）
+- 扫描状态指示器（绿点=扫描中，灰点=空闲）
+- 活动列表增量更新，避免每次刷新重建
+
+### 通知系统
+- 新增 Toast 通知组件（gui/widgets/toast.py）
+- 扫描完成时自动弹出通知（底部右侧滑入，5秒淡出）
+- 发现高危漏洞时弹出红色告警通知
+
+### 扫描器增强
+- 新增"扫描历史"tab，显示近 50 条扫描记录
+- 进度条显示当前扫描端口 + 预估剩余时间（ETA）
+- 扫描结果自动写入 scan_history 表
+
+### 利用页面增强
+- 新增严重程度筛选下拉（全部/CRITICAL/HIGH/MEDIUM/LOW）
+- Execute 按钮前增加确认对话框，防止误操作
+- 选中模块时显示可编辑选项表单（timeout/threads 等），替代空 dict
+
+### 目标页面增强
+- 新增备注编辑区（QTextEdit + 保存按钮），数据持久化到 targets.notes
+- 漏洞表格双击弹出详情对话框（完整描述/证据/修复建议/严重程度颜色编码）
+
 ## v1.0.0 (2026-05-27)
 
 ### 核心架构

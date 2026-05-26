@@ -2,6 +2,7 @@ import re
 import time
 import requests
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+from modules.http_utils import get_session
 
 requests.packages.urllib3.disable_warnings()
 
@@ -57,23 +58,7 @@ class WebScanner:
         self.logger = logger
         self.timeout = config.get("scan.web_timeout", 10)
         self._running = False
-        self._proxies = self._build_proxies()
-
-    def _build_proxies(self):
-        proxy_cfg = self.config.get("proxy", {})
-        if not isinstance(proxy_cfg, dict) or not proxy_cfg.get("enabled"):
-            return None
-        proxies = {}
-        socks5 = proxy_cfg.get("socks5", "").strip()
-        if socks5:
-            return {"http": f"socks5h://{socks5}", "https": f"socks5h://{socks5}"}
-        http_p = proxy_cfg.get("http", "").strip()
-        https_p = proxy_cfg.get("https", "").strip()
-        if http_p:
-            proxies["http"] = http_p
-        if https_p:
-            proxies["https"] = https_p
-        return proxies or None
+        self._session = get_session(config)
 
     def scan(self, target_url, callback=None):
         if not target_url.startswith(("http://", "https://")):
@@ -133,7 +118,7 @@ class WebScanner:
                 break
             url = urljoin(base_url, path)
             try:
-                resp = requests.get(url, timeout=self.timeout, verify=False, allow_redirects=False, proxies=self._proxies)
+                resp = self._session.get(url, timeout=self.timeout, allow_redirects=False)
                 if resp.status_code == 200 and len(resp.text) > 10:
                     severity = "HIGH" if path in (".env", ".git/config", "wp-config.php.bak", ".htpasswd") else "MEDIUM"
                     findings.append({
@@ -151,7 +136,7 @@ class WebScanner:
     def _scan_sqli(self, base_url):
         findings = []
         try:
-            resp = requests.get(base_url, timeout=self.timeout, verify=False, proxies=self._proxies)
+            resp = self._session.get(base_url, timeout=self.timeout)
         except requests.RequestException:
             return findings
 
@@ -186,7 +171,7 @@ class WebScanner:
                 try:
                     if sqli["type"] == "time":
                         start = time.time()
-                        requests.get(test_url, timeout=self.timeout + 5, verify=False, proxies=self._proxies)
+                        self._session.get(test_url, timeout=self.timeout + 5)
                         elapsed = time.time() - start
                         if elapsed >= 4.5:
                             findings.append({
@@ -198,7 +183,7 @@ class WebScanner:
                                 "recommendation": "使用参数化查询，禁止拼接 SQL",
                             })
                     else:
-                        resp = requests.get(test_url, timeout=self.timeout, verify=False, proxies=self._proxies)
+                        resp = self._session.get(test_url, timeout=self.timeout)
                         for pattern in SQLI_ERROR_PATTERNS:
                             if re.search(pattern, resp.text, re.IGNORECASE):
                                 findings.append({
@@ -217,7 +202,7 @@ class WebScanner:
     def _scan_xss(self, base_url):
         findings = []
         try:
-            resp = requests.get(base_url, timeout=self.timeout, verify=False, proxies=self._proxies)
+            resp = self._session.get(base_url, timeout=self.timeout)
         except requests.RequestException:
             return findings
 
@@ -250,7 +235,7 @@ class WebScanner:
                 test_url = urlunparse(parsed._replace(query=urlencode(test_params, doseq=True)))
 
                 try:
-                    resp = requests.get(test_url, timeout=self.timeout, verify=False, proxies=self._proxies)
+                    resp = self._session.get(test_url, timeout=self.timeout)
                     if xss["payload"] in resp.text:
                         findings.append({
                             "type": "xss",
@@ -267,7 +252,7 @@ class WebScanner:
     def _scan_headers(self, base_url):
         findings = []
         try:
-            resp = requests.get(base_url, timeout=self.timeout, verify=False, proxies=self._proxies)
+            resp = self._session.get(base_url, timeout=self.timeout)
         except requests.RequestException:
             return findings
 

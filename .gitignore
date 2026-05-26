@@ -26,6 +26,11 @@ env/
 darkveil.json
 darkveil.log
 
+# PyInstaller
+*.spec
+build/
+dist/
+
 # OS
 .DS_Store
 Thumbs.db

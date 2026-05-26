@@ -1,3 +1,4 @@
+import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QLineEdit,
     QPushButton, QComboBox, QSpinBox, QProgressBar, QTabWidget,
@@ -80,6 +81,7 @@ class ScannerPage(QWidget):
         self.engine = engine
         self.worker = None
         self._scan_target = ""
+        self._scan_start_time = 0
         self._setup_ui()
 
     def _setup_ui(self):
@@ -158,11 +160,17 @@ class ScannerPage(QWidget):
         self.vuln_table.set_column_widths([90, 90, 180, 250, 250])
         self.tabs.addTab(self.vuln_table, "漏洞")
 
+        self.history_table = ResultTable(["时间", "类型", "目标", "状态"])
+        self.history_table.set_column_widths([160, 100, 250, 100])
+        self.tabs.addTab(self.history_table, "扫描历史")
+
         layout.addWidget(self.tabs)
 
         self.status_label = QLabel("就绪")
         self.status_label.setObjectName("subtitle")
         layout.addWidget(self.status_label)
+
+        self._load_history()
 
     def _cleanup_worker(self):
         if not self.worker:
@@ -181,6 +189,20 @@ class ScannerPage(QWidget):
             self.worker.wait(2000)
         self.worker = None
 
+    def _load_history(self):
+        try:
+            history = self.engine.db.get_scan_history(50)
+            self.history_table.clear_data()
+            for h in (history or []):
+                self.history_table.add_row([
+                    str(h.get("started_at", ""))[:19],
+                    h.get("scan_type", ""),
+                    h.get("target", ""),
+                    h.get("status", ""),
+                ])
+        except Exception:
+            pass
+
     def _start_scan(self):
         target = self.target_input.text().strip()
         if not target:
@@ -188,6 +210,7 @@ class ScannerPage(QWidget):
             return
 
         self._cleanup_worker()
+        self._scan_start_time = time.time()
 
         scan_type = self.scan_type.currentIndex()
         self._scan_target = target
@@ -217,11 +240,14 @@ class ScannerPage(QWidget):
         self.worker.finished.connect(self._on_finished)
         self.worker.error.connect(self._on_error)
         self.worker.start()
+        self.engine._scanning = True
+        self.engine.emit("scan_progress", target, 0)
         self.status_label.setText(f"正在扫描: {target}")
 
     def _stop_scan(self):
         self._cleanup_worker()
         self._reset_ui()
+        self.engine._scanning = False
         self.status_label.setText("已停止")
 
     def _import_nmap(self):
@@ -263,7 +289,19 @@ class ScannerPage(QWidget):
             return
         try:
             if total > 0:
-                self.progress_bar.setValue(int(done / total * 100))
+                pct = int(done / total * 100)
+                self.progress_bar.setValue(pct)
+                elapsed = time.time() - self._scan_start_time
+                if done > 0 and elapsed > 1:
+                    eta = elapsed / done * (total - done)
+                    if eta > 60:
+                        eta_str = f"{int(eta//60)}m{int(eta%60)}s"
+                    else:
+                        eta_str = f"{int(eta)}s"
+                    info_str = f" | {info}" if info else ""
+                    self.status_label.setText(
+                        f"扫描中: {pct}% ({done}/{total}){info_str} | 剩余 ~{eta_str}"
+                    )
         except Exception:
             pass
 
@@ -282,7 +320,10 @@ class ScannerPage(QWidget):
                         (r.get("banner") or "")[:80],
                     ])
                 if scan_type == "port":
+                    self._log_scan("port_scan", len(results))
                     self._reset_ui()
+                    self.engine._scanning = False
+                    self.engine.emit("scan_complete", self._scan_target, len(results))
                     self.tabs.setCurrentIndex(0)
                     self.status_label.setText(f"完成: {len(results)} 个开放端口")
 
@@ -309,6 +350,8 @@ class ScannerPage(QWidget):
 
             elif scan_type == "full_done":
                 self._reset_ui()
+                self.engine._scanning = False
+                self.engine.emit("scan_complete", self._scan_target, -1)
                 self.status_label.setText("全面扫描完成")
         except Exception as e:
             self._reset_ui()
@@ -318,4 +361,12 @@ class ScannerPage(QWidget):
         if not self.worker or self.worker.cancelled:
             return
         self._reset_ui()
+        self.engine._scanning = False
         self.status_label.setText(f"错误: {msg}")
+
+    def _log_scan(self, scan_type, count):
+        try:
+            self.engine.db.log_scan(scan_type, self._scan_target, "completed", {"count": count})
+            self._load_history()
+        except Exception:
+            pass

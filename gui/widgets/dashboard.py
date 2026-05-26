@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
-from pyqtgraph import PlotWidget, BarGraphItem
+from pyqtgraph import PlotWidget, BarGraphItem, PlotDataItem
 import numpy as np
 
 
@@ -70,22 +70,38 @@ class DashboardWidget(QWidget):
     def __init__(self, engine, parent=None):
         super().__init__(parent)
         self.engine = engine
+        self._last_activity_ids = set()
         self._setup_ui()
+
+        # Auto-refresh timer
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self.refresh)
+        self._timer.start(15000)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(24, 20, 24, 20)
 
-        # Header
-        header = QVBoxLayout()
-        header.setSpacing(2)
+        # Header with scan status indicator
+        header = QHBoxLayout()
+        header.setSpacing(8)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
         title = QLabel("DarkVeil 控制中心")
         title.setObjectName("title")
         subtitle = QLabel("攻防一体安全平台")
         subtitle.setObjectName("subtitle")
-        header.addWidget(title)
-        header.addWidget(subtitle)
+        title_col.addWidget(title)
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col)
+        header.addStretch()
+
+        self.scan_indicator = QLabel("  空闲")
+        self.scan_indicator.setObjectName("stat_label")
+        self.scan_indicator.setStyleSheet("color: #888; font-size: 11px;")
+        header.addWidget(self.scan_indicator)
+
         layout.addLayout(header)
 
         # Stat cards row
@@ -172,6 +188,28 @@ class DashboardWidget(QWidget):
 
         layout.addWidget(port_frame)
 
+        # Bottom row 2: Vuln timeline chart (full width)
+        timeline_frame = QFrame()
+        timeline_frame.setObjectName("panel")
+        tf_layout = QVBoxLayout(timeline_frame)
+        tf_layout.setContentsMargins(0, 0, 0, 0)
+        tf_layout.setSpacing(0)
+
+        tf_header = QLabel("  漏洞趋势（近 30 天）")
+        tf_header.setObjectName("panel_header")
+        tf_header.setFixedHeight(32)
+        tf_layout.addWidget(tf_header)
+
+        self.timeline_chart = PlotWidget()
+        self.timeline_chart.setMinimumHeight(120)
+        self.timeline_chart.setMaximumHeight(160)
+        self.timeline_chart.setBackground(None)
+        self.timeline_chart.setMouseEnabled(x=False, y=False)
+        self.timeline_chart.showGrid(x=True, y=True, alpha=0.15)
+        tf_layout.addWidget(self.timeline_chart)
+
+        layout.addWidget(timeline_frame)
+
     def refresh(self):
         try:
             stats = self.engine.db.get_stats()
@@ -180,37 +218,51 @@ class DashboardWidget(QWidget):
             self.card_vulns.set_value(stats.get("vulnerabilities", 0))
             self.card_exploits.set_value(stats.get("exploits", 0))
 
-            # Activity list — rebuild
-            while self.activity_container.count() > 1:
-                child = self.activity_container.takeAt(0)
-                if child.widget():
-                    child.widget().deleteLater()
-
+            # Activity list — incremental update
             history = self.engine.db.get_scan_history(8)
             if history:
-                for h in history:
-                    item = ActivityItem(
-                        h.get("started_at", ""),
-                        h.get("scan_type", ""),
-                        h.get("target", ""),
-                    )
-                    self.activity_container.insertWidget(
-                        self.activity_container.count() - 1, item
-                    )
+                new_ids = {h.get("id") for h in history}
+                if new_ids != self._last_activity_ids:
+                    while self.activity_container.count() > 1:
+                        child = self.activity_container.takeAt(0)
+                        if child.widget():
+                            child.widget().deleteLater()
+                    for h in history:
+                        item = ActivityItem(
+                            h.get("started_at", ""),
+                            h.get("scan_type", ""),
+                            h.get("target", ""),
+                        )
+                        self.activity_container.insertWidget(
+                            self.activity_container.count() - 1, item
+                        )
+                    self._last_activity_ids = new_ids
             else:
-                placeholder = QLabel("  暂无扫描记录")
-                placeholder.setObjectName("panel_body")
-                placeholder.setStyleSheet("padding: 20px; color: #999;")
-                self.activity_container.insertWidget(
-                    self.activity_container.count() - 1, placeholder
-                )
+                if not self._last_activity_ids:
+                    pass  # already showing placeholder
+                else:
+                    self._last_activity_ids = set()
+
+            # Scan status indicator
+            scanning = getattr(self.engine, "_scanning", False)
+            if scanning:
+                self.scan_indicator.setText("  扫描中...")
+                self.scan_indicator.setStyleSheet("color: #2e7d32; font-size: 11px; font-weight: bold;")
+            else:
+                self.scan_indicator.setText("  空闲")
+                self.scan_indicator.setStyleSheet("color: #888; font-size: 11px;")
 
             # Charts
             self._update_vuln_chart(stats.get("vuln_by_severity", {}))
             self._update_port_chart()
+            self._update_timeline_chart()
 
         except Exception as e:
-            pass
+            try:
+                from core.logger import get_logger
+                get_logger().error(f"Dashboard 刷新异常: {e}")
+            except Exception:
+                pass
 
     def _update_vuln_chart(self, vuln_severity):
         self.vuln_chart.clear()
@@ -295,6 +347,37 @@ class DashboardWidget(QWidget):
 
         self.port_chart.setYRange(0, max(counts) * 1.4)
         self.port_chart.setXRange(-0.6, len(counts) - 0.4)
+
+    def _update_timeline_chart(self):
+        self.timeline_chart.clear()
+        try:
+            timeline = self.engine.db.get_vuln_timeline(30)
+        except Exception:
+            self._show_empty_chart(self.timeline_chart, "暂无趋势数据")
+            return
+
+        if not timeline:
+            self._show_empty_chart(self.timeline_chart, "暂无趋势数据")
+            return
+
+        timeline.reverse()
+        counts = [t["cnt"] for t in timeline]
+        dates = [t["day"] for t in timeline]
+
+        x = np.arange(len(counts))
+        pen = pg.mkPen(color="#c62828", width=2)
+        self.timeline_chart.plot(x, counts, pen=pen, symbol="o", symbolSize=5, symbolBrush="#c62828")
+
+        # X-axis date labels
+        ax = self.timeline_chart.getAxis("bottom")
+        step = max(1, len(dates) // 8)
+        ticks = [(i, dates[i][5:]) for i in range(0, len(dates), step)]
+        ax.setTicks([ticks])
+        ax.setStyle(tickFont=pg.QtGui.QFont("Segoe UI", 7))
+        ax.setHeight(20)
+
+        if counts:
+            self.timeline_chart.setYRange(0, max(counts) * 1.3 + 1)
 
     def _show_empty_chart(self, chart, text):
         msg = pg.TextItem(text=text, color="#aaa", anchor=(0.5, 0.5))

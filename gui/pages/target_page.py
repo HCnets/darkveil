@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QSplitter, QGroupBox, QTextEdit, QMessageBox,
-    QInputDialog
+    QInputDialog, QDialog
 )
 from PyQt6.QtCore import Qt
 from gui.widgets.result_table import ResultTable
@@ -97,10 +97,11 @@ class TargetPage(QWidget):
         bottom_layout.addWidget(port_group)
 
         # 右侧：漏洞
-        vuln_group = QGroupBox("漏洞")
+        vuln_group = QGroupBox("漏洞（双击查看详情）")
         vuln_layout = QVBoxLayout(vuln_group)
         self.vuln_table = ResultTable(["严重程度", "类型", "标题", "描述"])
         self.vuln_table.set_column_widths([90, 100, 180, 250])
+        self.vuln_table.cellDoubleClicked.connect(self._show_vuln_detail)
         vuln_layout.addWidget(self.vuln_table)
         bottom_layout.addWidget(vuln_group)
 
@@ -108,6 +109,25 @@ class TargetPage(QWidget):
         splitter.setSizes([300, 300])
 
         layout.addWidget(splitter)
+
+        # Notes section
+        notes_frame = QFrame()
+        notes_frame.setObjectName("panel")
+        notes_layout = QHBoxLayout(notes_frame)
+        notes_layout.setContentsMargins(8, 8, 8, 8)
+        notes_layout.setSpacing(8)
+
+        notes_layout.addWidget(QLabel("备注:"))
+        self.notes_edit = QTextEdit()
+        self.notes_edit.setMaximumHeight(60)
+        self.notes_edit.setPlaceholderText("选择目标后可编辑备注...")
+        notes_layout.addWidget(self.notes_edit, 1)
+
+        self.btn_save_notes = QPushButton("保存备注")
+        self.btn_save_notes.clicked.connect(self._save_notes)
+        notes_layout.addWidget(self.btn_save_notes)
+
+        layout.addWidget(notes_frame)
 
     def _refresh(self):
         db = self.engine.db
@@ -145,6 +165,8 @@ class TargetPage(QWidget):
         if not db:
             return
 
+        self._current_target_id = tid
+
         # 加载端口
         self.port_table.clear_data()
         ports = db.get_ports(tid)
@@ -158,6 +180,7 @@ class TargetPage(QWidget):
 
         # 加载漏洞
         self.vuln_table.clear_data()
+        self._vuln_data = []
         vulns = db.get_vulnerabilities(tid)
         for v in vulns:
             sev = v.get("severity", "")
@@ -168,6 +191,14 @@ class TargetPage(QWidget):
                 v.get("title", ""),
                 (v.get("description") or "-")[:80],
             ], row_color=color)
+            self._vuln_data.append(v)
+
+        # 加载备注
+        targets = db.get_targets()
+        for t in targets:
+            if t.get("id") == tid:
+                self.notes_edit.setPlainText(t.get("notes") or "")
+                break
 
     def _cve_scan(self):
         db = self.engine.db
@@ -314,4 +345,50 @@ class TargetPage(QWidget):
 
         from gui.widgets.compare_dialog import CompareDialog
         dlg = CompareDialog(self.engine.db, tid, host, self)
+        dlg.exec()
+
+    def _save_notes(self):
+        tid = getattr(self, '_current_target_id', None)
+        if not tid:
+            QMessageBox.information(self, "保存备注", "请先选择一个目标")
+            return
+        notes = self.notes_edit.toPlainText()
+        self.engine.db.update_notes(tid, notes)
+        self.count_label.setText("备注已保存")
+
+    def _show_vuln_detail(self, row, col):
+        vuln_data = getattr(self, '_vuln_data', [])
+        if row < 0 or row >= len(vuln_data):
+            return
+        v = vuln_data[row]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"漏洞详情 — {v.get('title', '')}")
+        dlg.setMinimumSize(500, 400)
+        dlg_layout = QVBoxLayout(dlg)
+
+        sev = v.get("severity", "")
+        sev_label = QLabel(f"[{sev}]")
+        sev_label.setStyleSheet(f"color: {SEVERITY_COLORS.get(sev, '#666')}; font-weight: bold; font-size: 16px;")
+        dlg_layout.addWidget(sev_label)
+
+        title_label = QLabel(v.get("title", ""))
+        title_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+        dlg_layout.addWidget(title_label)
+
+        for field, label in [
+            ("vuln_type", "类型"), ("description", "描述"),
+            ("evidence", "证据"), ("recommendation", "修复建议"),
+        ]:
+            val = v.get(field, "")
+            if val:
+                lbl = QLabel(f"<b>{label}:</b><br>{val}")
+                lbl.setWordWrap(True)
+                lbl.setTextFormat(Qt.TextFormat.RichText)
+                dlg_layout.addWidget(lbl)
+
+        btn = QPushButton("关闭")
+        btn.clicked.connect(dlg.accept)
+        dlg_layout.addWidget(btn)
+
         dlg.exec()

@@ -108,6 +108,15 @@ class Database:
             self.logger.error(f"get_or_create_target 失败: {e}")
             return None
 
+    def update_notes(self, target_id, notes):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute("UPDATE targets SET notes = ? WHERE id = ?", (notes, target_id))
+                self.conn.commit()
+        except Exception as e:
+            self.logger.error(f"update_notes 失败: {e}")
+
     def add_port(self, target_id, port, state, service=None, version=None, banner=None):
         if target_id is None:
             return None
