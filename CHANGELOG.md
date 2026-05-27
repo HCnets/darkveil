@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.3.1 (2026-05-27)
+
+### 安全修复
+- 修复报告生成器 XSS 漏洞：HTML 输出现在正确转义用户内容
+- 修复 privesc_check 模块 shell=True 风险：改用 shlex.split 参数列表
+- 修复 socket.setdefaulttimeout 全局竞争条件：subdomain_enum/subdomain_takeover 改用单 socket 超时
+
+### 线程安全修复
+- 修复 brute-base _stop 标志线程安全：改用 threading.Event
+- 修复 DB 抽象绕过：honeypot_page/target_page 不再直接访问 db._lock 和 db.conn
+- 新增 db.delete_target() 和 db.clear_honeypot_captures() 方法
+
+### 代码质量
+- 修复 ExploitBase 可变类默认值：targets/options 改为 None + __init__ 初始化
+- 修复 http_utils session.timeout 无效：改用 session._default_timeout 存储
+- Dashboard 定时器仅在可见时刷新，避免无效 SQL 查询
+- 应用退出时清理所有运行中的 worker 线程和数据库连接
+- 修正 README 模块数量（24→27）
+
 ## v1.3.0 (2026-05-27)
 
 ### 流量监控增强

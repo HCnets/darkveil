@@ -77,6 +77,7 @@ class DashboardWidget(QWidget):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
         self._timer.start(15000)
+        self._was_visible = False
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -211,6 +212,8 @@ class DashboardWidget(QWidget):
         layout.addWidget(timeline_frame)
 
     def refresh(self):
+        if not self.isVisible():
+            return
         try:
             stats = self.engine.db.get_stats()
             self.card_targets.set_value(stats.get("targets", 0))

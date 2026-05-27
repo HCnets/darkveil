@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addStretch()
 
-        version_label = QLabel("  v0.1.0")
+        version_label = QLabel("  v1.3.0")
         version_label.setStyleSheet("color: #666; font-size: 11px; padding: 8px; background: transparent;")
         sidebar_layout.addWidget(version_label)
 
@@ -409,8 +409,42 @@ class MainWindow(QMainWindow):
             self.config.set("ui.window_height", self.height())
         except Exception:
             pass
+
+        # Stop running workers
+        try:
+            if hasattr(self.scanner_page, 'worker') and self.scanner_page.worker:
+                if hasattr(self.scanner_page.worker, 'stop'):
+                    self.scanner_page.worker.stop()
+                self.scanner_page.worker.wait(2000)
+        except Exception:
+            pass
+
+        try:
+            if hasattr(self.exploit_page, 'worker') and self.exploit_page.worker:
+                self.exploit_page._cleanup_worker()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(self.monitor_page, 'worker') and self.monitor_page.worker:
+                self.monitor_page._stop_capture()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(self.honeypot_page, '_workers'):
+                self.honeypot_page._stop_all()
+        except Exception:
+            pass
+
         try:
             self.logger.remove_callback(self.terminal.write_log)
         except Exception:
             pass
+
+        try:
+            self.engine.db.close()
+        except Exception:
+            pass
+
         super().closeEvent(event)

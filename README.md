@@ -8,7 +8,7 @@
 |------|------|
 | 控制中心 | 数据概览、漏洞分布图表、端口服务统计、最近活动 |
 | 漏洞扫描 | TCP 端口扫描、服务识别、Web 漏洞检测、Nmap XML 导入 |
-| 漏洞利用 | 24 个内置利用模块，分类筛选、搜索、检测/执行 |
+| 漏洞利用 | 27 个内置利用模块，分类筛选、搜索、检测/执行 |
 | 渗透向导 | 自动化攻击链：扫描→识别→检测→利用→报告，一键完成 |
 | 目标管理 | 目标列表、端口/漏洞详情、CVE 匹配、快照对比 |
 | 实用工具 | 编码/解码（Base64/URL/Hex/Unicode/XOR/chr）、WAF 绕过 payload |
@@ -17,13 +17,13 @@
 | 安全报告 | Markdown/HTML/PDF 三种格式导出 |
 | 系统设置 | 6 套主题切换、代理配置 |
 
-## 内置利用模块（24 个）
+## 内置利用模块（27 个）
 
 ### 漏洞检测
 - SQL 注入、SSRF、命令注入、文件上传、CVE 检查、CORS、未授权访问
 
 ### 暴力破解
-- SSH、FTP、MySQL、RDP、SMB、SNMP、HTTP Basic、JWT
+- SSH、FTP、MySQL、RDP、SMB、SNMP、HTTP Basic、JWT、Redis、PostgreSQL、SMTP
 
 ### 信息收集
 - SSH 版本枚举、子域名枚举、目录扫描、主机发现、DNS Zone Transfer、子域名接管

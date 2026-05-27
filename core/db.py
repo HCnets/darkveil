@@ -374,6 +374,26 @@ class Database:
             self.logger.error(f"get_honeypot_captures 失败: {e}")
             return []
 
+    def delete_target(self, target_id):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute("DELETE FROM vulnerabilities WHERE target_id = ?", (target_id,))
+                cursor.execute("DELETE FROM ports WHERE target_id = ?", (target_id,))
+                cursor.execute("DELETE FROM targets WHERE id = ?", (target_id,))
+                self.conn.commit()
+        except Exception as e:
+            self.logger.error(f"delete_target 失败: {e}")
+
+    def clear_honeypot_captures(self):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute("DELETE FROM honeypot_captures")
+                self.conn.commit()
+        except Exception as e:
+            self.logger.error(f"clear_honeypot_captures 失败: {e}")
+
     def close(self):
         try:
             with self._lock:

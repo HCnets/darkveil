@@ -290,12 +290,7 @@ class TargetPage(QWidget):
             return
 
         try:
-            with db._lock:
-                cursor = db.conn.cursor()
-                cursor.execute("DELETE FROM vulnerabilities WHERE target_id = ?", (tid,))
-                cursor.execute("DELETE FROM ports WHERE target_id = ?", (tid,))
-                cursor.execute("DELETE FROM targets WHERE id = ?", (tid,))
-                db.conn.commit()
+            db.delete_target(tid)
             self.count_label.setText(f"已删除: {host}")
             self._refresh()
         except Exception as e:

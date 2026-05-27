@@ -363,10 +363,7 @@ class HoneypotPage(QWidget):
         if not db:
             return
         try:
-            with db._lock:
-                cursor = db.conn.cursor()
-                cursor.execute("DELETE FROM honeypot_captures")
-                db.conn.commit()
+            db.clear_honeypot_captures()
             self.history_table.clear_data()
             self.history_count.setText("已清空")
         except Exception as e:

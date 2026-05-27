@@ -1,4 +1,5 @@
 from datetime import datetime
+from html import escape as html_escape
 
 
 class ReportGenerator:
@@ -194,19 +195,19 @@ hr {{ border: none; border-top: 1px solid #ddd; margin: 30px 0; }}
                     html.append("</table>")
                     in_table = False
                     table_header_done = False
-                html.append(f"<h1>{stripped[2:]}</h1>")
+                html.append(f"<h1>{html_escape(stripped[2:])}</h1>")
             elif stripped.startswith("## "):
                 if in_table:
                     html.append("</table>")
                     in_table = False
                     table_header_done = False
-                html.append(f"<h2>{stripped[3:]}</h2>")
+                html.append(f"<h2>{html_escape(stripped[3:])}</h2>")
             elif stripped.startswith("### "):
                 if in_table:
                     html.append("</table>")
                     in_table = False
                     table_header_done = False
-                html.append(f"<h3>{stripped[4:]}</h3>")
+                html.append(f"<h3>{html_escape(stripped[4:])}</h3>")
             elif stripped.startswith("|") and "|" in stripped[1:]:
                 cells = [c.strip() for c in stripped.split("|")[1:-1]]
                 if all(set(c) <= set("- :") for c in cells):
@@ -216,14 +217,14 @@ hr {{ border: none; border-top: 1px solid #ddd; margin: 30px 0; }}
                     html.append("<table>")
                     in_table = True
                 tag = "th" if not table_header_done else "td"
-                row = "".join(f"<{tag}>{c}</{tag}>" for c in cells)
+                row = "".join(f"<{tag}>{html_escape(c)}</{tag}>" for c in cells)
                 html.append(f"<tr>{row}</tr>")
             elif stripped.startswith("- "):
                 if in_table:
                     html.append("</table>")
                     in_table = False
                     table_header_done = False
-                html.append(f"<li>{stripped[2:]}</li>")
+                html.append(f"<li>{html_escape(stripped[2:])}</li>")
             elif stripped.startswith("---"):
                 if in_table:
                     html.append("</table>")
@@ -235,7 +236,7 @@ hr {{ border: none; border-top: 1px solid #ddd; margin: 30px 0; }}
                     html.append("</table>")
                     in_table = False
                     table_header_done = False
-                html.append(f"<p>{stripped}</p>")
+                html.append(f"<p>{html_escape(stripped)}</p>")
 
         if in_table:
             html.append("</table>")

@@ -35,7 +35,7 @@ def get_session(config=None):
                 session.proxies = proxies
 
         timeout = config.get("scan.web_timeout", 10)
-        session.timeout = timeout
+        session._default_timeout = timeout
 
     return session
 
