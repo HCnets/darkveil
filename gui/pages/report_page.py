@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QTextBrowser, QFileDialog, QGroupBox
+    QPushButton, QTextBrowser, QFileDialog, QGroupBox, QCheckBox
 )
 from PyQt6.QtCore import Qt
 from modules.report.generator import ReportGenerator
@@ -22,6 +22,36 @@ class ReportPage(QWidget):
         title = QLabel("安全报告")
         title.setObjectName("title")
         layout.addWidget(title)
+
+        # Section selection
+        section_frame = QFrame()
+        section_frame.setObjectName("panel")
+        section_layout = QHBoxLayout(section_frame)
+        section_layout.setSpacing(12)
+
+        section_layout.addWidget(QLabel("报告章节:"))
+        self.section_summary = QCheckBox("执行摘要")
+        self.section_summary.setChecked(True)
+        section_layout.addWidget(self.section_summary)
+
+        self.section_targets = QCheckBox("目标详情")
+        self.section_targets.setChecked(True)
+        section_layout.addWidget(self.section_targets)
+
+        self.section_vulns = QCheckBox("漏洞汇总")
+        self.section_vulns.setChecked(True)
+        section_layout.addWidget(self.section_vulns)
+
+        self.section_high_risk = QCheckBox("高危详情")
+        self.section_high_risk.setChecked(True)
+        section_layout.addWidget(self.section_high_risk)
+
+        self.section_history = QCheckBox("扫描历史")
+        self.section_history.setChecked(True)
+        section_layout.addWidget(self.section_history)
+
+        section_layout.addStretch()
+        layout.addWidget(section_frame)
 
         # 操作栏
         btn_frame = QFrame()
@@ -65,6 +95,15 @@ class ReportPage(QWidget):
 
         layout.addWidget(preview_group)
 
+    def _get_sections(self):
+        return {
+            "summary": self.section_summary.isChecked(),
+            "targets": self.section_targets.isChecked(),
+            "vulns": self.section_vulns.isChecked(),
+            "high_risk": self.section_high_risk.isChecked(),
+            "history": self.section_history.isChecked(),
+        }
+
     def _generate(self):
         db = self.engine.db
         if not db:
@@ -76,8 +115,9 @@ class ReportPage(QWidget):
 
         try:
             gen = ReportGenerator(db)
-            self._report_md = gen.generate_markdown()
-            html = gen.generate_html()
+            sections = self._get_sections()
+            self._report_md = gen.generate_markdown(sections=sections)
+            html = gen.generate_html(sections=sections)
             self.preview.setHtml(html)
 
             self.btn_export_md.setEnabled(True)

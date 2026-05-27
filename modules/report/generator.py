@@ -5,7 +5,28 @@ class ReportGenerator:
     def __init__(self, db):
         self.db = db
 
-    def generate_markdown(self):
+    def _calculate_risk_score(self, stats, vulns):
+        score = 0
+        vuln_by_sev = stats.get("vuln_by_severity", {})
+        score += vuln_by_sev.get("CRITICAL", 0) * 10
+        score += vuln_by_sev.get("HIGH", 0) * 5
+        score += vuln_by_sev.get("MEDIUM", 0) * 2
+        score += vuln_by_sev.get("LOW", 0) * 1
+        return min(score, 100)
+
+    def _get_risk_level(self, score):
+        if score >= 50:
+            return "高危"
+        elif score >= 20:
+            return "中危"
+        elif score > 0:
+            return "低危"
+        return "安全"
+
+    def generate_markdown(self, sections=None):
+        if sections is None:
+            sections = {"summary": True, "targets": True, "vulns": True, "high_risk": True, "history": True}
+
         lines = []
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         stats = self.db.get_stats()
@@ -15,29 +36,51 @@ class ReportGenerator:
         lines.append("# DarkVeil 安全评估报告")
         lines.append(f"\n生成时间: {now}\n")
 
-        # 概览
-        lines.append("## 1. 评估概览\n")
-        lines.append(f"| 指标 | 数值 |")
-        lines.append(f"|------|------|")
-        lines.append(f"| 扫描目标 | {stats.get('targets', 0)} |")
-        lines.append(f"| 开放端口 | {stats.get('open_ports', 0)} |")
-        lines.append(f"| 漏洞发现 | {stats.get('vulnerabilities', 0)} |")
-        lines.append(f"| 利用尝试 | {stats.get('exploits', 0)} |")
-        lines.append(f"| 扫描次数 | {stats.get('scans', 0)} |")
+        # 执行摘要
+        if sections.get("summary"):
+            risk_score = self._calculate_risk_score(stats, vulns)
+            risk_level = self._get_risk_level(risk_score)
+            vuln_by_sev = stats.get("vuln_by_severity", {})
 
-        # 漏洞分布
-        vuln_by_sev = stats.get("vuln_by_severity", {})
-        if vuln_by_sev:
-            lines.append("\n### 漏洞严重程度分布\n")
-            sev_icons = {"CRITICAL": "!!!", "HIGH": "!!", "MEDIUM": "!", "LOW": "."}
-            for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                cnt = vuln_by_sev.get(sev, 0)
-                if cnt > 0:
-                    lines.append(f"- **{sev}**: {cnt}")
+            lines.append("## 执行摘要\n")
+            lines.append(f"**风险评分: {risk_score}/100 ({risk_level})**\n")
+            lines.append(f"| 指标 | 数值 |")
+            lines.append(f"|------|------|")
+            lines.append(f"| 扫描目标 | {stats.get('targets', 0)} |")
+            lines.append(f"| 开放端口 | {stats.get('open_ports', 0)} |")
+            lines.append(f"| 漏洞发现 | {stats.get('vulnerabilities', 0)} |")
+            lines.append(f"| 利用尝试 | {stats.get('exploits', 0)} |")
+            lines.append(f"| 扫描次数 | {stats.get('scans', 0)} |")
+
+            if vuln_by_sev:
+                lines.append("\n### 漏洞严重程度分布\n")
+                for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    cnt = vuln_by_sev.get(sev, 0)
+                    if cnt > 0:
+                        lines.append(f"- **{sev}**: {cnt}")
+
+            # Top 3 findings
+            critical_high = [v for v in vulns if v.get("severity") in ("CRITICAL", "HIGH")]
+            if critical_high:
+                lines.append("\n### Top 3 关键发现\n")
+                for i, v in enumerate(critical_high[:3], 1):
+                    lines.append(f"{i}. **[{v.get('severity')}] {v.get('title')}** - {v.get('description', '')[:80]}")
+
+            # Recommendations
+            lines.append("\n### 建议\n")
+            if vuln_by_sev.get("CRITICAL", 0) > 0:
+                lines.append("- 立即修复所有 CRITICAL 级别漏洞")
+            if vuln_by_sev.get("HIGH", 0) > 0:
+                lines.append("- 尽快处理 HIGH 级别漏洞")
+            if stats.get("open_ports", 0) > 10:
+                lines.append("- 审查开放端口，关闭不必要的服务")
+            if not vulns:
+                lines.append("- 当前未发现已知漏洞，建议定期复查")
+            lines.append("")
 
         # 目标详情
-        if targets:
-            lines.append("\n## 2. 目标详情\n")
+        if sections.get("targets") and targets:
+            lines.append("\n## 目标详情\n")
             for t in targets:
                 tid = t.get("id")
                 host = t.get("host", "?")
@@ -57,19 +100,20 @@ class ReportGenerator:
                     for p in ports:
                         lines.append(f"| {p.get('port')} | {p.get('state')} | {p.get('service') or '-'} | {p.get('version') or '-'} |")
 
-                target_vulns = [v for v in vulns if v.get("target_id") == tid]
-                if target_vulns:
-                    lines.append(f"\n**漏洞 ({len(target_vulns)}):**\n")
-                    lines.append("| 严重程度 | 类型 | 标题 | 描述 |")
-                    lines.append("|----------|------|------|------|")
-                    for v in target_vulns:
-                        lines.append(f"| {v.get('severity')} | {v.get('vuln_type')} | {v.get('title')} | {(v.get('description') or '-')[:60]} |")
+                if sections.get("vulns"):
+                    target_vulns = [v for v in vulns if v.get("target_id") == tid]
+                    if target_vulns:
+                        lines.append(f"\n**漏洞 ({len(target_vulns)}):**\n")
+                        lines.append("| 严重程度 | 类型 | 标题 | 描述 |")
+                        lines.append("|----------|------|------|------|")
+                        for v in target_vulns:
+                            lines.append(f"| {v.get('severity')} | {v.get('vuln_type')} | {v.get('title')} | {(v.get('description') or '-')[:60]} |")
 
                 lines.append("")
 
-        # 所有漏洞汇总
-        if vulns:
-            lines.append("\n## 3. 漏洞汇总\n")
+        # 漏洞汇总
+        if sections.get("vulns") and vulns:
+            lines.append("\n## 漏洞汇总\n")
             lines.append("| # | 严重程度 | 类型 | 标题 | 发现时间 |")
             lines.append("|---|----------|------|------|----------|")
             for i, v in enumerate(vulns[:50], 1):
@@ -78,10 +122,12 @@ class ReportGenerator:
                     f"{v.get('title')} | {v.get('found_at', '-')} |"
                 )
 
+        # 高危漏洞详情
+        if sections.get("high_risk") and vulns:
             critical = [v for v in vulns if v.get("severity") == "CRITICAL"]
             high = [v for v in vulns if v.get("severity") == "HIGH"]
             if critical or high:
-                lines.append("\n## 4. 高危漏洞详情\n")
+                lines.append("\n## 高危漏洞详情\n")
                 for v in critical + high:
                     lines.append(f"### [{v.get('severity')}] {v.get('title')}\n")
                     lines.append(f"- 类型: {v.get('vuln_type')}")
@@ -93,22 +139,23 @@ class ReportGenerator:
                     lines.append("")
 
         # 扫描历史
-        history = self.db.get_scan_history(20)
-        if history:
-            lines.append("\n## 5. 扫描历史\n")
-            lines.append("| 时间 | 类型 | 目标 | 状态 |")
-            lines.append("|------|------|------|------|")
-            for h in history:
-                lines.append(
-                    f"| {h.get('started_at', '-')} | {h.get('scan_type')} | "
-                    f"{h.get('target')} | {h.get('status')} |"
-                )
+        if sections.get("history"):
+            history = self.db.get_scan_history(20)
+            if history:
+                lines.append("\n## 扫描历史\n")
+                lines.append("| 时间 | 类型 | 目标 | 状态 |")
+                lines.append("|------|------|------|------|")
+                for h in history:
+                    lines.append(
+                        f"| {h.get('started_at', '-')} | {h.get('scan_type')} | "
+                        f"{h.get('target')} | {h.get('status')} |"
+                    )
 
         lines.append("\n---\n*报告由 DarkVeil 自动生成*")
         return "\n".join(lines)
 
-    def generate_html(self):
-        md = self.generate_markdown()
+    def generate_html(self, sections=None):
+        md = self.generate_markdown(sections=sections)
         html_body = self._md_to_html(md)
         return f"""<!DOCTYPE html>
 <html lang="zh-CN">

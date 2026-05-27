@@ -5,7 +5,8 @@ import time
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QLineEdit, QTextEdit, QGroupBox, QSplitter
+    QPushButton, QLineEdit, QTextEdit, QGroupBox, QSplitter,
+    QCheckBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
@@ -15,11 +16,12 @@ class CaptureWorker(QThread):
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
-    def __init__(self, interface_ip, ports, protocol):
+    def __init__(self, interface_ip, ports, protocol, parse_mode=False):
         super().__init__()
         self.interface_ip = interface_ip
         self.ports = ports
         self.protocol = protocol
+        self.parse_mode = parse_mode
         self._running = False
         self._socks = []
 
@@ -86,18 +88,68 @@ class CaptureWorker(QThread):
     def _handle_tcp_conn(self, conn, ts):
         try:
             conn.settimeout(2)
-            data = conn.recv(1024)
+            data = conn.recv(4096)
             if data:
                 hex_data = data[:64].hex(" ")
                 self.packet_captured.emit(
                     f"[{ts}]   数据 ({len(data)} bytes): {hex_data}"
                 )
+                if self.parse_mode:
+                    parsed = self._parse_protocol(data)
+                    if parsed:
+                        self.packet_captured.emit(f"[{ts}]   {parsed}")
         except socket.timeout:
             pass
         except Exception:
             pass
         finally:
             conn.close()
+
+    def _parse_protocol(self, data):
+        try:
+            # HTTP request
+            if data[:4] in (b"GET ", b"POST", b"PUT ", b"DELE", b"HEAD", b"OPTI", b"PATC"):
+                lines = data.decode("utf-8", errors="replace").split("\r\n")
+                req_line = lines[0] if lines else ""
+                host = ""
+                for line in lines[1:]:
+                    if line.lower().startswith("host:"):
+                        host = line.split(":", 1)[1].strip()
+                        break
+                return f"[HTTP 请求] {req_line} | Host: {host}"
+
+            # HTTP response
+            if data[:5] == b"HTTP/":
+                lines = data.decode("utf-8", errors="replace").split("\r\n")
+                status_line = lines[0] if lines else ""
+                return f"[HTTP 响应] {status_line}"
+
+            # SSH handshake
+            if data.startswith(b"SSH-"):
+                banner = data.decode("utf-8", errors="replace").strip()
+                return f"[SSH 握手] {banner}"
+
+            # DNS query (port 53)
+            if len(data) >= 12 and data[2:4] == b"\x01\x00":
+                try:
+                    qname_parts = []
+                    idx = 12
+                    while idx < len(data):
+                        length = data[idx]
+                        if length == 0:
+                            break
+                        idx += 1
+                        qname_parts.append(data[idx:idx+length].decode("utf-8", errors="replace"))
+                        idx += length
+                    qname = ".".join(qname_parts)
+                    if qname:
+                        return f"[DNS 查询] {qname}"
+                except Exception:
+                    pass
+
+            return None
+        except Exception:
+            return None
 
     def _capture_udp(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -221,6 +273,10 @@ class MonitorPage(QWidget):
         self.btn_all.clicked.connect(lambda: self._set_proto("ALL"))
         ctrl_layout.addWidget(self.btn_all)
 
+        self.parse_check = QCheckBox("解析模式")
+        self.parse_check.setToolTip("自动识别 HTTP/SSH/DNS 协议并解析")
+        ctrl_layout.addWidget(self.parse_check)
+
         self.btn_start = QPushButton("开始捕获")
         self.btn_start.setObjectName("primary")
         self.btn_start.clicked.connect(self._toggle_capture)
@@ -287,7 +343,7 @@ class MonitorPage(QWidget):
         self.output_text.clear()
         self.output_text.append(f"开始捕获 {addr} 端口 {ports} 协议 {proto}\n")
 
-        self.worker = CaptureWorker(addr, ports, proto)
+        self.worker = CaptureWorker(addr, ports, proto, self.parse_check.isChecked())
         self.worker.packet_captured.connect(self._on_packet)
         self.worker.error.connect(self._on_error)
         self.worker.finished.connect(self._on_finished)
