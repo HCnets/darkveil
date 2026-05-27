@@ -40,8 +40,8 @@ class Logger:
         for cb in self._callbacks[:]:
             try:
                 cb(timestamp, level, msg)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug(f"回调异常: {e}")
 
     def info(self, msg):
         self.logger.info(msg)

@@ -17,7 +17,11 @@ def main():
         from gui.main_window import MainWindow
 
         config = Config()
+        config_errors = config.validate()
         logger = Logger(config)
+        if config_errors:
+            for err in config_errors:
+                logger.warning(f"配置修正: {err}")
         db = Database(config, logger)
         engine = Engine(config, db, logger)
 

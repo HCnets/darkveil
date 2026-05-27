@@ -88,6 +88,27 @@ class Config:
             d[keys[-1]] = value
             self.save()
 
+    def validate(self):
+        errors = []
+        max_threads = self.get("scan.max_threads")
+        if not isinstance(max_threads, int) or max_threads < 1:
+            errors.append("scan.max_threads 必须 >= 1")
+            self.data["scan"]["max_threads"] = 100
+
+        timeout = self.get("scan.timeout")
+        if not isinstance(timeout, (int, float)) or timeout <= 0:
+            errors.append("scan.timeout 必须 > 0")
+            self.data["scan"]["timeout"] = 2.0
+
+        web_timeout = self.get("scan.web_timeout")
+        if not isinstance(web_timeout, (int, float)) or web_timeout <= 0:
+            errors.append("scan.web_timeout 必须 > 0")
+            self.data["scan"]["web_timeout"] = 10
+
+        if errors:
+            self.save()
+        return errors
+
     def _deep_merge(self, base, override):
         for k, v in override.items():
             if k in base and isinstance(base[k], dict) and isinstance(v, dict):

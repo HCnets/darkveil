@@ -203,10 +203,23 @@ class ScannerPage(QWidget):
         except Exception:
             pass
 
+    def _validate_target(self, target):
+        import re
+        if not target:
+            return False
+        if len(target) > 255:
+            return False
+        if re.match(r'^[a-zA-Z0-9\-_.:\/\[\]]+$', target):
+            return True
+        return False
+
     def _start_scan(self):
         target = self.target_input.text().strip()
         if not target:
             self.status_label.setText("请输入扫描目标")
+            return
+        if not self._validate_target(target):
+            self.status_label.setText("目标格式无效")
             return
 
         self._cleanup_worker()
