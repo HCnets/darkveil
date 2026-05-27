@@ -74,6 +74,14 @@ class Database:
                     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     finished_at TIMESTAMP
                 );
+                CREATE TABLE IF NOT EXISTS honeypot_captures (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    service TEXT NOT NULL,
+                    source_ip TEXT NOT NULL,
+                    source_port INTEGER,
+                    data TEXT,
+                    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
             """)
             self.conn.commit()
 
@@ -337,6 +345,34 @@ class Database:
         except Exception as e:
             self.logger.error(f"get_stats 失败: {e}")
         return stats
+
+    def add_honeypot_capture(self, service, source_ip, source_port=None, data=None):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "INSERT INTO honeypot_captures (service, source_ip, source_port, data) "
+                    "VALUES (?, ?, ?, ?)",
+                    (service, source_ip, source_port, data),
+                )
+                self.conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            self.logger.error(f"add_honeypot_capture 失败: {e}")
+            return None
+
+    def get_honeypot_captures(self, limit=100):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM honeypot_captures ORDER BY captured_at DESC LIMIT ?",
+                    (limit,),
+                )
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            self.logger.error(f"get_honeypot_captures 失败: {e}")
+            return []
 
     def close(self):
         try:

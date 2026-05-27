@@ -4,8 +4,10 @@ import time
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QLineEdit, QTextEdit, QGroupBox, QCheckBox
+    QPushButton, QLineEdit, QTextEdit, QGroupBox, QCheckBox,
+    QTabWidget
 )
+from gui.widgets.result_table import ResultTable
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 
@@ -25,6 +27,7 @@ FAKE_HTTP_RESPONSE = (
 class HoneypotWorker(QThread):
     log_signal = pyqtSignal(str)
     error_signal = pyqtSignal(str)
+    capture_signal = pyqtSignal(dict)
 
     def __init__(self, service_type, port):
         super().__init__()
@@ -85,6 +88,10 @@ class HoneypotWorker(QThread):
                     self.log_signal.emit(
                         f"[{ts}]   SSH 数据 ({len(data)} bytes): {data[:100]}"
                     )
+                    self.capture_signal.emit({
+                        "service": "SSH", "source_ip": addr[0],
+                        "source_port": addr[1], "data": data[:500].decode("utf-8", errors="replace"),
+                    })
 
             elif self.service_type == "HTTP":
                 data = conn.recv(4096)
@@ -93,7 +100,7 @@ class HoneypotWorker(QThread):
                     req_line = lines[0] if lines else ""
                     self.log_signal.emit(f"[{ts}]   HTTP 请求: {req_line.strip()}")
 
-                    # 检查 POST 登录
+                    body = ""
                     body_start = data.find(b"\r\n\r\n")
                     if body_start >= 0:
                         body = data[body_start + 4:]
@@ -102,21 +109,29 @@ class HoneypotWorker(QThread):
                                 f"[{ts}]   POST 数据: {body.decode('utf-8', errors='replace')[:200]}"
                             )
                     conn.send(FAKE_HTTP_RESPONSE)
+                    self.capture_signal.emit({
+                        "service": "HTTP", "source_ip": addr[0],
+                        "source_port": addr[1],
+                        "data": f"{req_line.strip()}\n{body.decode('utf-8', errors='replace')[:300]}",
+                    })
 
             elif self.service_type == "TELNET":
                 conn.send(b"login: ")
                 user = conn.recv(1024)
+                user_str = user.decode("utf-8", errors="replace").strip() if user else ""
                 if user:
-                    self.log_signal.emit(
-                        f"[{ts}]   用户名: {user.decode('utf-8', errors='replace').strip()}"
-                    )
+                    self.log_signal.emit(f"[{ts}]   用户名: {user_str}")
                 conn.send(b"Password: ")
                 pwd = conn.recv(1024)
+                pwd_str = pwd.decode("utf-8", errors="replace").strip() if pwd else ""
                 if pwd:
-                    self.log_signal.emit(
-                        f"[{ts}]   密码: {pwd.decode('utf-8', errors='replace').strip()}"
-                    )
+                    self.log_signal.emit(f"[{ts}]   密码: {pwd_str}")
                 conn.send(b"Login incorrect\r\n")
+                self.capture_signal.emit({
+                    "service": "TELNET", "source_ip": addr[0],
+                    "source_port": addr[1],
+                    "data": f"user={user_str} pass={pwd_str}",
+                })
 
         except socket.timeout:
             pass
@@ -192,7 +207,10 @@ class HoneypotPage(QWidget):
 
         layout.addWidget(svc_frame)
 
-        # 日志输出
+        # Tab widget for logs and history
+        self.tabs = QTabWidget()
+
+        # 日志输出 tab
         log_group = QGroupBox("捕获日志")
         log_layout = QVBoxLayout(log_group)
 
@@ -211,7 +229,31 @@ class HoneypotPage(QWidget):
         btn_row.addWidget(self.status_label)
         log_layout.addLayout(btn_row)
 
-        layout.addWidget(log_group)
+        self.tabs.addTab(log_group, "实时日志")
+
+        # 捕获历史 tab
+        history_widget = QWidget()
+        history_layout = QVBoxLayout(history_widget)
+        self.history_table = ResultTable(["时间", "服务", "来源IP", "来源端口", "数据"])
+        self.history_table.set_column_widths([140, 60, 130, 80, 350])
+        history_layout.addWidget(self.history_table)
+
+        history_btn_row = QHBoxLayout()
+        self.btn_refresh_history = QPushButton("刷新历史")
+        self.btn_refresh_history.clicked.connect(self._load_history)
+        history_btn_row.addWidget(self.btn_refresh_history)
+        self.btn_clear_history = QPushButton("清空历史")
+        self.btn_clear_history.clicked.connect(self._clear_history)
+        history_btn_row.addWidget(self.btn_clear_history)
+        history_btn_row.addStretch()
+        self.history_count = QLabel("")
+        self.history_count.setObjectName("subtitle")
+        history_btn_row.addWidget(self.history_count)
+        history_layout.addLayout(history_btn_row)
+
+        self.tabs.addTab(history_widget, "捕获历史")
+
+        layout.addWidget(self.tabs)
 
     def _toggle(self):
         if self._workers:
@@ -243,6 +285,7 @@ class HoneypotPage(QWidget):
             worker = HoneypotWorker(svc_type, port)
             worker.log_signal.connect(self._on_log)
             worker.error_signal.connect(self._on_error)
+            worker.capture_signal.connect(self._on_capture)
             worker.start()
             self._workers[svc_type] = worker
 
@@ -288,3 +331,43 @@ class HoneypotPage(QWidget):
 
     def _on_error(self, text):
         self.log_text.append(f"[错误] {text}")
+
+    def _on_capture(self, capture):
+        db = self.engine.db
+        if db:
+            db.add_honeypot_capture(
+                service=capture.get("service", ""),
+                source_ip=capture.get("source_ip", ""),
+                source_port=capture.get("source_port"),
+                data=capture.get("data", ""),
+            )
+
+    def _load_history(self):
+        db = self.engine.db
+        if not db:
+            return
+        self.history_table.clear_data()
+        captures = db.get_honeypot_captures(100)
+        for c in captures:
+            self.history_table.add_row([
+                c.get("captured_at", "-"),
+                c.get("service", ""),
+                c.get("source_ip", ""),
+                str(c.get("source_port", "")),
+                (c.get("data") or "")[:100],
+            ])
+        self.history_count.setText(f"{len(captures)} 条记录")
+
+    def _clear_history(self):
+        db = self.engine.db
+        if not db:
+            return
+        try:
+            with db._lock:
+                cursor = db.conn.cursor()
+                cursor.execute("DELETE FROM honeypot_captures")
+                db.conn.commit()
+            self.history_table.clear_data()
+            self.history_count.setText("已清空")
+        except Exception as e:
+            self.history_count.setText(f"清空失败: {e}")

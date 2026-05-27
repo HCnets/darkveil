@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.2.0 (2026-05-27)
+
+### 新增模块
+- redis_brute: Redis AUTH 弱口令爆破（原生 socket，支持无密码检测）
+- postgres_brute: PostgreSQL 弱口令爆破（需 psycopg2）
+- smtp_brute: SMTP LOGIN 弱口令爆破（标准库 smtplib，支持 STARTTLS）
+
+### 蜜罐增强
+- 蜜罐捕获数据持久化到 honeypot_captures 表，重启后不丢失
+- 新增"捕获历史"tab，显示近 100 条捕获记录
+- 支持清空历史记录
+
+### AutoPilot 增强
+- 攻击链新增 Redis/PostgreSQL/SMTP 服务自动匹配
+
 ## v1.1.0 (2026-05-27)
 
 ### 缺陷修复

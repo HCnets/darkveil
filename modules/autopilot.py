@@ -13,6 +13,9 @@ SERVICE_EXPLOIT_MAP = {
     "smb": ["smb_brute"],
     "snmp": ["snmp_brute"],
     "dns": ["dns_zone_transfer"],
+    "redis": ["redis_brute"],
+    "postgres": ["postgres_brute"],
+    "smtp": ["smtp_brute"],
 }
 
 STAGE_NAMES = [
