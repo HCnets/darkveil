@@ -100,8 +100,8 @@ QPushButton {{
     border: 2px outset #ffffff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    padding: 4px 12px;
-    min-height: 18px;
+    padding: 5px 12px;
+    min-height: 28px;
     font-family: "Tahoma";
     font-size: 8pt;
 }}
@@ -339,6 +339,10 @@ QTabBar::tab:selected {{
     color: #000000;
     font-weight: bold;
     border-bottom: 1px solid #ffffff;
+}}
+
+QTabBar::tab:hover:!selected {{
+    background-color: #c8c4b8;
 }}
 
 QProgressBar {{

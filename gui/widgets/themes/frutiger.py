@@ -151,7 +151,7 @@ QPushButton {{
     border-top-color: #c0e8ff;
     border-radius: 8px;
     padding: 6px 18px;
-    min-height: 22px;
+    min-height: 28px;
     font-weight: 500;
 }}
 
@@ -227,7 +227,7 @@ QLineEdit, QSpinBox, QComboBox {{
     border-top-color: #6098c0;
     border-radius: 8px;
     padding: 6px 10px;
-    min-height: 22px;
+    min-height: 28px;
     color: #1a3a5a;
     selection-background-color: #0090d0;
     selection-color: #ffffff;

@@ -162,6 +162,35 @@ QTextEdit#terminal {{
     padding: 8px;
     selection-background-color: #264f78;
 }}
+
+/* === Shared interaction states (all themes) === */
+QPushButton:focus {{
+    outline: 2px solid {self.accent};
+    outline-offset: 2px;
+}}
+
+QCheckBox:focus::indicator {{
+    border: 2px solid {self.accent};
+}}
+
+QTabBar::tab:focus {{
+    outline: 2px solid {self.accent};
+    outline-offset: -2px;
+}}
+
+QCheckBox:hover {{
+    color: {self.accent};
+}}
+
+QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{
+    background-color: {self.scrollbar_bg};
+    color: {self.text_secondary};
+    border-color: {self.border_color};
+}}
+
+QCheckBox:disabled {{
+    color: {self.text_secondary};
+}}
 """
 
     def apply_palette(self, app: QApplication):

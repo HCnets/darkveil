@@ -136,7 +136,7 @@ QPushButton {{
     border: none;
     border-radius: 4px;
     padding: 6px 16px;
-    min-height: 20px;
+    min-height: 28px;
 }}
 
 QPushButton:hover {{
@@ -176,12 +176,16 @@ QPushButton#danger:hover {{
     background-color: #ff7777;
 }}
 
+QPushButton#danger:pressed {{
+    background-color: #cc3333;
+}}
+
 QLineEdit, QSpinBox, QComboBox {{
     background-color: {self.input_bg};
     border: 1px solid {self.input_border};
     border-radius: 4px;
     padding: 5px 8px;
-    min-height: 20px;
+    min-height: 28px;
     color: {self.text_primary};
 }}
 

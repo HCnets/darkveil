@@ -141,7 +141,7 @@ QPushButton {{
     border: 1px solid {self.border_color};
     border-radius: 2px;
     padding: 6px 16px;
-    min-height: 20px;
+    min-height: 28px;
 }}
 
 QPushButton:hover {{
@@ -194,7 +194,7 @@ QLineEdit, QSpinBox, QComboBox {{
     border: 1px solid {self.border_color};
     border-radius: 2px;
     padding: 5px 8px;
-    min-height: 20px;
+    min-height: 28px;
     color: {self.text_primary};
 }}
 

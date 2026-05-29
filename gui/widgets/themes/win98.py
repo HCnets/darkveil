@@ -97,8 +97,8 @@ QPushButton {{
     border: 2px outset #ffffff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    padding: 3px 10px;
-    min-height: 18px;
+    padding: 4px 12px;
+    min-height: 28px;
     font-size: 8pt;
 }}
 
@@ -138,6 +138,10 @@ QPushButton#danger {{
     background-color: #800000;
     color: #ffffff;
     border: 2px outset #c04040;
+}}
+
+QPushButton#danger:hover {{
+    background-color: #a00000;
 }}
 
 QPushButton#danger:pressed {{
@@ -332,6 +336,10 @@ QTabBar::tab:selected {{
     color: #000000;
     font-weight: bold;
     border-bottom: 1px solid #ffffff;
+}}
+
+QTabBar::tab:hover:!selected {{
+    background-color: #d0d0d0;
 }}
 
 QProgressBar {{
