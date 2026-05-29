@@ -23,7 +23,7 @@ class ModernTheme(ThemeBase):
     @property
     def text_primary(self): return "#1a1a1a"
     @property
-    def text_secondary(self): return "#666666"
+    def text_secondary(self): return "#555555"
     @property
     def border_color(self): return "#d0d0d0"
     @property
@@ -145,7 +145,7 @@ QPushButton:pressed {{
 
 QPushButton:disabled {{
     background-color: #f0f0f0;
-    color: #a0a0a0;
+    color: #707070;
     border-color: #e0e0e0;
 }}
 

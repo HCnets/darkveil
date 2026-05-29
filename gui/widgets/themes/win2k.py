@@ -23,7 +23,7 @@ class Win2000Theme(ThemeBase):
     @property
     def text_primary(self): return "#000000"
     @property
-    def text_secondary(self): return "#444444"
+    def text_secondary(self): return "#333333"
     @property
     def border_color(self): return "#808080"
     @property
@@ -119,7 +119,7 @@ QPushButton:pressed {{
 }}
 
 QPushButton:disabled {{
-    color: #808080;
+    color: #606060;
     border-style: outset;
     border-color: #c0c0c0;
 }}

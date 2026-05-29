@@ -115,7 +115,7 @@ QPushButton:pressed {{
 }}
 
 QPushButton:disabled {{
-    color: #808080;
+    color: #606060;
     border-color: #c0c0c0;
 }}
 

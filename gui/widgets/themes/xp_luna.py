@@ -31,7 +31,7 @@ class _XPLunaBase(ThemeBase):
     @property
     def text_primary(self): return "#000000"
     @property
-    def text_secondary(self): return "#444444"
+    def text_secondary(self): return "#333333"
     @property
     def border_color(self): return "#808080"
     @property
@@ -90,7 +90,7 @@ QPushButton{ident}:pressed {{
 }}
 QPushButton{ident}:disabled {{
     background-color: #d4d0c8;
-    color: #808080;
+    color: #606060;
 }}
 """
 

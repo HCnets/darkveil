@@ -136,7 +136,7 @@ QLabel {{
 }}
 
 QLabel#subtitle {{
-    color: #666666;
+    color: #555555;
     font-size: 8pt;
 }}
 
@@ -195,7 +195,7 @@ QPushButton:pressed {{
 QPushButton:disabled {{
     background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
         stop:0 #e8e8e8, stop:0.04 #f0f0f0, stop:1 #d0d0d0);
-    color: #888888;
+    color: #666666;
     border: 1px solid #b0b0b0;
     border-top: 1px solid #d0d0d0;
 }}

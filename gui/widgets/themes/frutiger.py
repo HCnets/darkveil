@@ -23,7 +23,7 @@ class FrutigerAeroTheme(ThemeBase):
     @property
     def text_primary(self): return "#1a3a5a"
     @property
-    def text_secondary(self): return "#5a8aaa"
+    def text_secondary(self): return "#3a6a8a"
     @property
     def border_color(self): return "qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #90c8e8, stop:1 #60a0d0)"
     @property
@@ -174,7 +174,7 @@ QPushButton:pressed {{
 QPushButton:disabled {{
     background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
         stop:0 #e0e8f0, stop:1 #c0d0e0);
-    color: #8090a0;
+    color: #5a6a7a;
     border-color: #b0c0d0;
 }}
 
