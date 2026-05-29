@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "darkveil"
+version = "2.0.0"
+description = "攻防一体安全评估平台"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "DarkVeil Team"},
+]
+keywords = ["security", "pentest", "vulnerability-scanner", "exploit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "PyQt6>=6.5.0",
+    "requests>=2.28.0",
+    "fpdf2>=2.7.0",
+    "pyqtgraph>=0.13.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+ssh = ["paramiko>=3.0.0"]
+mysql = ["PyMySQL>=1.0.0"]
+full = [
+    "paramiko>=3.0.0",
+    "PyMySQL>=1.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+darkveil = "main:main"
+
+[project.gui-scripts]
+darkveil-gui = "main:main"
+
+[tool.setuptools.packages.find]
+include = ["core*", "modules*", "gui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["core", "modules"]
+omit = ["tests/*", "gui/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

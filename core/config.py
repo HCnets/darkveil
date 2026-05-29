@@ -1,14 +1,19 @@
 import os
 import json
+import base64
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
     DEFAULTS = {
         "app_name": "DarkVeil",
-        "version": "0.1.0",
+        "version": "2.0.0",
         "db_path": "darkveil.db",
         "log_level": "INFO",
         "log_file": "darkveil.log",
+        "verify_ssl": False,
         "scan": {
             "max_threads": 100,
             "timeout": 2.0,
@@ -26,6 +31,13 @@ class Config:
         "exploit": {
             "payloads_dir": "modules/exploit/payloads",
             "modules_dir": "modules/exploit/modules",
+        },
+        "intel": {
+            "nvd_api_key": "",
+            "shodan_api_key": "",
+            "fofa_api_key": "",
+            "fofa_email": "",
+            "cache_ttl_hours": 24,
         },
         "ui": {
             "theme": "aero",
@@ -56,14 +68,43 @@ class Config:
             if isinstance(user_cfg, dict):
                 self._deep_merge(self.data, user_cfg)
         except (json.JSONDecodeError, IOError, OSError) as e:
-            print(f"[WARN] 配置文件加载失败: {e}")
+            logger.warning("配置文件加载失败: %s", e)
 
     def save(self):
         try:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, indent=2, ensure_ascii=False)
         except (IOError, OSError) as e:
-            print(f"[WARN] 配置文件保存失败: {e}")
+            logger.warning("配置文件保存失败: %s", e)
+
+    # API key fields that should be encoded/decoded
+    _API_KEY_FIELDS = {"nvd_api_key", "shodan_api_key", "fofa_api_key"}
+
+    @staticmethod
+    def _encode_api_key(value):
+        """Encode API key with base64 and add prefix."""
+        if not value or not isinstance(value, str):
+            return value
+        if value.startswith("enc:"):
+            return value
+        encoded = base64.b64encode(value.encode("utf-8")).decode("utf-8")
+        return f"enc:{encoded}"
+
+    @staticmethod
+    def _decode_api_key(value):
+        """Decode API key from base64 if it has the prefix."""
+        if not value or not isinstance(value, str):
+            return value
+        if not value.startswith("enc:"):
+            return value
+        try:
+            return base64.b64decode(value[4:].encode("utf-8")).decode("utf-8")
+        except Exception:
+            return value
+
+    def _should_encode_key(self, key):
+        """Check if the key path points to an API key field."""
+        return key.split(".")[-1] in self._API_KEY_FIELDS
 
     def get(self, key, default=None):
         keys = key.split(".")
@@ -75,6 +116,9 @@ class Config:
                 return default
             if val is None:
                 return default
+        # Decode API keys on read
+        if self._should_encode_key(key):
+            return self._decode_api_key(val)
         return val
 
     def set(self, key, value):
@@ -85,7 +129,11 @@ class Config:
                 return
             d = d.setdefault(k, {})
         if isinstance(d, dict):
-            d[keys[-1]] = value
+            # Encode API keys on write
+            if self._should_encode_key(key):
+                d[keys[-1]] = self._encode_api_key(value)
+            else:
+                d[keys[-1]] = value
             self.save()
 
     def validate(self):

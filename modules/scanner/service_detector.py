@@ -90,10 +90,11 @@ class ServiceDetector:
 
     def _detect_http(self, ip, port):
         try:
-            import requests
+            from modules.http_utils import get_session
+            session = get_session(self.config)
             scheme = "https" if port in (443, 8443) else "http"
             url = f"{scheme}://{ip}:{port}/"
-            resp = requests.get(url, timeout=5, verify=False, allow_redirects=False)
+            resp = session.get(url, timeout=5, allow_redirects=False)
             info = {
                 "status_code": resp.status_code,
                 "server": resp.headers.get("Server", ""),

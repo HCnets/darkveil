@@ -1,0 +1,404 @@
+from .engine import ThemeBase
+
+
+class NordTheme(ThemeBase):
+    name = "nord"
+    display_name = "Nord"
+    description = "冷蓝灰暗色，极简克制的北欧风"
+    font_family = "Segoe UI"
+    font_size = 9
+
+    # Nord palette
+    # Polar Night: #2e3440 #3b4252 #434c5e #4c566a
+    # Snow Storm: #d8dee9 #e5e9f0 #eceff4
+    # Frost: #8fbcbb #88c0d0 #81a1c1 #5e81ac
+    # Aurora: #bf616a #d08770 #ebcb8b #a3be8c #b48ead
+
+    @property
+    def window_bg(self): return "#2e3440"
+    @property
+    def panel_bg(self): return "#3b4252"
+    @property
+    def sidebar_bg(self): return "#2e3440"
+    @property
+    def sidebar_fg(self): return "#d8dee9"
+    @property
+    def sidebar_active(self): return "#88c0d0"
+    @property
+    def accent(self): return "#88c0d0"
+    @property
+    def text_primary(self): return "#eceff4"
+    @property
+    def text_secondary(self): return "#d8dee9"
+    @property
+    def border_color(self): return "#434c5e"
+    @property
+    def input_bg(self): return "#3b4252"
+    @property
+    def input_border(self): return "#4c566a"
+    @property
+    def button_bg(self): return "#434c5e"
+    @property
+    def button_hover(self): return "#4c566a"
+    @property
+    def button_pressed(self): return "#3b4252"
+    @property
+    def table_header_bg(self): return "#2e3440"
+    @property
+    def table_alt_row(self): return "#3b4252"
+    @property
+    def selection_bg(self): return "#5e81ac"
+    @property
+    def selection_fg(self): return "#eceff4"
+    @property
+    def scrollbar_bg(self): return "#2e3440"
+    @property
+    def scrollbar_handle(self): return "#4c566a"
+    @property
+    def terminal_bg(self): return "#2e3440"
+    @property
+    def terminal_fg(self): return "#d8dee9"
+    @property
+    def tooltip_bg(self): return "#434c5e"
+    @property
+    def tooltip_fg(self): return "#eceff4"
+    @property
+    def danger(self): return "#bf616a"
+    @property
+    def success(self): return "#a3be8c"
+    @property
+    def warning(self): return "#ebcb8b"
+
+    def generate_qss(self) -> str:
+        return f"""
+QMainWindow, QWidget {{
+    background-color: {self.window_bg};
+    color: {self.text_primary};
+    font-family: "{self.font_family}";
+    font-size: {self.font_size}pt;
+}}
+
+QFrame#sidebar {{
+    background-color: {self.sidebar_bg};
+    border-right: 1px solid {self.border_color};
+}}
+
+QPushButton#nav_btn {{
+    background-color: transparent;
+    color: {self.sidebar_fg};
+    border: none;
+    border-left: 3px solid transparent;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 10pt;
+}}
+
+QPushButton#nav_btn:hover {{
+    background-color: rgba(136, 192, 208, 0.08);
+    border-left: 3px solid rgba(136, 192, 208, 0.3);
+}}
+
+QPushButton#nav_btn:checked {{
+    background-color: rgba(136, 192, 208, 0.12);
+    border-left: 3px solid {self.sidebar_active};
+    color: {self.sidebar_active};
+    font-weight: bold;
+}}
+
+QFrame#panel, QGroupBox {{
+    background-color: {self.panel_bg};
+    border: 1px solid {self.border_color};
+    border-radius: 6px;
+    padding: 12px;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 6px;
+    color: {self.accent};
+    font-weight: bold;
+}}
+
+QLabel {{
+    color: {self.text_primary};
+    background: transparent;
+}}
+
+QLabel#subtitle {{
+    color: {self.text_secondary};
+    font-size: 8pt;
+}}
+
+QLabel#title {{
+    font-size: 16pt;
+    font-weight: bold;
+    color: {self.text_primary};
+}}
+
+QPushButton {{
+    background-color: {self.button_bg};
+    color: {self.text_primary};
+    border: none;
+    border-radius: 4px;
+    padding: 6px 16px;
+    min-height: 20px;
+}}
+
+QPushButton:hover {{
+    background-color: {self.button_hover};
+}}
+
+QPushButton:pressed {{
+    background-color: {self.button_pressed};
+}}
+
+QPushButton:disabled {{
+    background-color: #3b4252;
+    color: #4c566a;
+}}
+
+QPushButton#primary {{
+    background-color: {self.accent};
+    color: {self.window_bg};
+    font-weight: bold;
+}}
+
+QPushButton#primary:hover {{
+    background-color: #8fbcbb;
+}}
+
+QPushButton#primary:pressed {{
+    background-color: #81a1c1;
+}}
+
+QPushButton#danger {{
+    background-color: {self.danger};
+    color: {self.window_bg};
+    font-weight: bold;
+}}
+
+QPushButton#danger:hover {{
+    background-color: #c77a73;
+}}
+
+QLineEdit, QSpinBox, QComboBox {{
+    background-color: {self.input_bg};
+    border: 1px solid {self.input_border};
+    border-radius: 4px;
+    padding: 5px 8px;
+    min-height: 20px;
+    color: {self.text_primary};
+}}
+
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
+    border-color: {self.accent};
+}}
+
+QComboBox::drop-down {{
+    border: none;
+    width: 24px;
+}}
+
+QComboBox::down-arrow {{
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid {self.text_secondary};
+    margin-right: 6px;
+}}
+
+QComboBox QAbstractItemView {{
+    background-color: {self.input_bg};
+    border: 1px solid {self.border_color};
+    selection-background-color: {self.selection_bg};
+    selection-color: {self.selection_fg};
+    outline: none;
+}}
+
+QTableWidget {{
+    background-color: {self.panel_bg};
+    alternate-background-color: {self.table_alt_row};
+    border: 1px solid {self.border_color};
+    border-radius: 4px;
+    gridline-color: #434c5e;
+    selection-background-color: {self.selection_bg};
+    selection-color: {self.selection_fg};
+    outline: none;
+}}
+
+QTableWidget::item {{
+    padding: 4px 8px;
+    border: none;
+}}
+
+QHeaderView::section {{
+    background-color: {self.table_header_bg};
+    color: {self.text_secondary};
+    border: none;
+    border-bottom: 1px solid {self.border_color};
+    padding: 6px 8px;
+    font-weight: bold;
+    font-size: 8pt;
+}}
+
+QTextBrowser#terminal {{
+    background-color: {self.terminal_bg};
+    color: {self.terminal_fg};
+    border: none;
+    border-radius: 0;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 9pt;
+    padding: 8px;
+    selection-background-color: rgba(94, 129, 172, 0.35);
+}}
+
+QTextEdit#terminal {{
+    background-color: {self.terminal_bg};
+    color: {self.terminal_fg};
+    border: none;
+    border-radius: 0;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 9pt;
+    padding: 8px;
+    selection-background-color: rgba(94, 129, 172, 0.35);
+}}
+
+QProgressBar {{
+    background-color: #2e3440;
+    border: 1px solid {self.border_color};
+    border-radius: 4px;
+    text-align: center;
+    min-height: 18px;
+    font-size: 8pt;
+    color: {self.text_primary};
+}}
+
+QProgressBar::chunk {{
+    background-color: {self.accent};
+    border-radius: 3px;
+}}
+
+QTabWidget::pane {{
+    border: 1px solid {self.border_color};
+    border-radius: 4px;
+    background-color: {self.panel_bg};
+    top: -1px;
+}}
+
+QTabBar::tab {{
+    background-color: {self.window_bg};
+    border: 1px solid {self.border_color};
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 16px;
+    margin-right: 2px;
+    color: {self.text_secondary};
+}}
+
+QTabBar::tab:selected {{
+    background-color: {self.panel_bg};
+    color: {self.accent};
+    font-weight: bold;
+}}
+
+QTabBar::tab:hover:!selected {{
+    background-color: #3b4252;
+    color: {self.text_primary};
+}}
+
+QScrollBar:vertical {{
+    background-color: {self.scrollbar_bg};
+    width: 10px;
+    border: none;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:vertical {{
+    background-color: {self.scrollbar_handle};
+    border-radius: 5px;
+    min-height: 30px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background-color: #5e81ac;
+}}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+
+QScrollBar:horizontal {{
+    background-color: {self.scrollbar_bg};
+    height: 10px;
+    border: none;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:horizontal {{
+    background-color: {self.scrollbar_handle};
+    border-radius: 5px;
+    min-width: 30px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background-color: #5e81ac;
+}}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0;
+}}
+
+QCheckBox {{
+    spacing: 6px;
+    color: {self.text_primary};
+    background: transparent;
+}}
+
+QCheckBox::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 1px solid {self.input_border};
+    border-radius: 3px;
+    background-color: {self.input_bg};
+}}
+
+QCheckBox::indicator:checked {{
+    background-color: {self.accent};
+    border-color: {self.accent};
+}}
+
+QToolTip {{
+    background-color: {self.tooltip_bg};
+    color: {self.tooltip_fg};
+    border: none;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 8pt;
+}}
+
+QSplitter::handle {{
+    background-color: {self.border_color};
+}}
+
+QSplitter::handle:horizontal {{
+    width: 2px;
+}}
+
+QSplitter::handle:vertical {{
+    height: 2px;
+}}
+
+QStatusBar {{
+    background-color: {self.sidebar_bg};
+    color: {self.sidebar_fg};
+    border-top: 1px solid {self.border_color};
+    font-size: 8pt;
+}}
+
+QStatusBar QLabel {{
+    color: {self.sidebar_fg};
+    background: transparent;
+}}
+""" + self._dashboard_qss()

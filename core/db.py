@@ -3,6 +3,89 @@ import json
 import threading
 from datetime import datetime
 
+# Schema version tracking
+SCHEMA_VERSION = 2
+
+MIGRATIONS = {
+    1: [
+        # Initial schema (version 1)
+        """CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER PRIMARY KEY
+        );""",
+        """CREATE TABLE IF NOT EXISTS targets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            host TEXT NOT NULL,
+            ip TEXT,
+            first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            notes TEXT
+        );""",
+        """CREATE TABLE IF NOT EXISTS ports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id INTEGER NOT NULL,
+            port INTEGER NOT NULL,
+            state TEXT NOT NULL,
+            service TEXT,
+            version TEXT,
+            banner TEXT,
+            scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (target_id) REFERENCES targets(id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS vulnerabilities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id INTEGER NOT NULL,
+            port_id INTEGER,
+            vuln_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            evidence TEXT,
+            recommendation TEXT,
+            found_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (target_id) REFERENCES targets(id),
+            FOREIGN KEY (port_id) REFERENCES ports(id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS exploits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vuln_id INTEGER,
+            module_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            result TEXT,
+            executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vuln_id) REFERENCES vulnerabilities(id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS scan_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_type TEXT NOT NULL,
+            target TEXT NOT NULL,
+            status TEXT NOT NULL,
+            results_json TEXT,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            finished_at TIMESTAMP
+        );""",
+        """CREATE TABLE IF NOT EXISTS honeypot_captures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service TEXT NOT NULL,
+            source_ip TEXT NOT NULL,
+            source_port INTEGER,
+            data TEXT,
+            captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );""",
+        """CREATE TABLE IF NOT EXISTS intel_queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            query TEXT NOT NULL,
+            results_json TEXT,
+            cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );""",
+    ],
+    2: [
+        # Version 2: add OWASP/CWE columns
+        "ALTER TABLE vulnerabilities ADD COLUMN owasp_category TEXT;",
+        "ALTER TABLE vulnerabilities ADD COLUMN cwe_id TEXT;",
+    ],
+}
+
 
 class Database:
     def __init__(self, config, logger):
@@ -13,76 +96,53 @@ class Database:
         try:
             self.conn = sqlite3.connect(db_path, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
-            self._init_tables()
+            self._run_migrations()
             logger.info(f"数据库已连接: {db_path}")
         except Exception as e:
             logger.error(f"数据库连接失败: {e}")
             raise
 
-    def _init_tables(self):
-        with self._lock:
+    def _get_schema_version(self):
+        """Get current schema version from the database."""
+        try:
             cursor = self.conn.cursor()
-            cursor.executescript("""
-                CREATE TABLE IF NOT EXISTS targets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    host TEXT NOT NULL,
-                    ip TEXT,
-                    first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    notes TEXT
-                );
-                CREATE TABLE IF NOT EXISTS ports (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    target_id INTEGER NOT NULL,
-                    port INTEGER NOT NULL,
-                    state TEXT NOT NULL,
-                    service TEXT,
-                    version TEXT,
-                    banner TEXT,
-                    scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (target_id) REFERENCES targets(id)
-                );
-                CREATE TABLE IF NOT EXISTS vulnerabilities (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    target_id INTEGER NOT NULL,
-                    port_id INTEGER,
-                    vuln_type TEXT NOT NULL,
-                    severity TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    description TEXT,
-                    evidence TEXT,
-                    recommendation TEXT,
-                    found_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (target_id) REFERENCES targets(id),
-                    FOREIGN KEY (port_id) REFERENCES ports(id)
-                );
-                CREATE TABLE IF NOT EXISTS exploits (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    vuln_id INTEGER,
-                    module_name TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    result TEXT,
-                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (vuln_id) REFERENCES vulnerabilities(id)
-                );
-                CREATE TABLE IF NOT EXISTS scan_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    scan_type TEXT NOT NULL,
-                    target TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    results_json TEXT,
-                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    finished_at TIMESTAMP
-                );
-                CREATE TABLE IF NOT EXISTS honeypot_captures (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    service TEXT NOT NULL,
-                    source_ip TEXT NOT NULL,
-                    source_port INTEGER,
-                    data TEXT,
-                    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
+            )
+            if not cursor.fetchone():
+                return 0
+            cursor.execute("SELECT MAX(version) FROM schema_version")
+            row = cursor.fetchone()
+            return row[0] if row and row[0] else 0
+        except sqlite3.OperationalError:
+            return 0
+
+    def _set_schema_version(self, version):
+        """Record the current schema version."""
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO schema_version (version) VALUES (?)", (version,))
+        self.conn.commit()
+
+    def _run_migrations(self):
+        """Apply pending schema migrations in order."""
+        current = self._get_schema_version()
+        target = SCHEMA_VERSION
+
+        if current >= target:
+            return
+
+        with self._lock:
+            for version in range(current + 1, target + 1):
+                if version not in MIGRATIONS:
+                    continue
+                for sql in MIGRATIONS[version]:
+                    try:
+                        self.conn.execute(sql)
+                    except sqlite3.OperationalError:
+                        # Column/table already exists, skip
+                        pass
+                self._set_schema_version(version)
+                self.logger.info(f"数据库迁移完成: v{version}")
             self.conn.commit()
 
     def add_target(self, host, ip=None):
@@ -143,7 +203,8 @@ class Database:
             return None
 
     def add_vulnerability(self, target_id, vuln_type, severity, title,
-                          description=None, evidence=None, recommendation=None, port_id=None):
+                          description=None, evidence=None, recommendation=None, port_id=None,
+                          owasp_category=None, cwe_id=None):
         if target_id is None:
             return None
         try:
@@ -151,8 +212,10 @@ class Database:
                 cursor = self.conn.cursor()
                 cursor.execute(
                     "INSERT INTO vulnerabilities (target_id, port_id, vuln_type, severity, "
-                    "title, description, evidence, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (target_id, port_id, vuln_type, severity, title, description, evidence, recommendation),
+                    "title, description, evidence, recommendation, owasp_category, cwe_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (target_id, port_id, vuln_type, severity, title, description,
+                     evidence, recommendation, owasp_category, cwe_id),
                 )
                 self.conn.commit()
                 return cursor.lastrowid
@@ -393,6 +456,52 @@ class Database:
                 self.conn.commit()
         except Exception as e:
             self.logger.error(f"clear_honeypot_captures 失败: {e}")
+
+    def add_intel_query(self, source, query, results_json):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "INSERT INTO intel_queries (source, query, results_json) VALUES (?, ?, ?)",
+                    (source, query, results_json),
+                )
+                self.conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            self.logger.error(f"add_intel_query 失败: {e}")
+            return None
+
+    def get_intel_cache(self, source, query, max_age_hours=24):
+        try:
+            import json
+            with self._lock:
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "SELECT results_json FROM intel_queries "
+                    "WHERE source = ? AND query = ? "
+                    "AND datetime(cached_at, '+' || ? || ' hours') > datetime('now') "
+                    "ORDER BY cached_at DESC LIMIT 1",
+                    (source, query, max_age_hours),
+                )
+                row = cursor.fetchone()
+                if row and row["results_json"]:
+                    return json.loads(row["results_json"])
+                return None
+        except Exception as e:
+            self.logger.error(f"get_intel_cache 失败: {e}")
+            return None
+
+    def clear_intel_cache(self, source=None):
+        try:
+            with self._lock:
+                cursor = self.conn.cursor()
+                if source:
+                    cursor.execute("DELETE FROM intel_queries WHERE source = ?", (source,))
+                else:
+                    cursor.execute("DELETE FROM intel_queries")
+                self.conn.commit()
+        except Exception as e:
+            self.logger.error(f"clear_intel_cache 失败: {e}")
 
     def close(self):
         try:

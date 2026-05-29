@@ -71,6 +71,7 @@ class DashboardWidget(QWidget):
         super().__init__(parent)
         self.engine = engine
         self._last_activity_ids = set()
+        self._timeline_data = []  # Store for tooltip
         self._setup_ui()
 
         # Auto-refresh timer
@@ -183,8 +184,23 @@ class DashboardWidget(QWidget):
         self.port_chart.setMinimumHeight(140)
         self.port_chart.setMaximumHeight(200)
         self.port_chart.setBackground(None)
-        self.port_chart.setMouseEnabled(x=False, y=False)
+        self.port_chart.setMouseEnabled(x=True, y=False)
         self.port_chart.showGrid(x=False, y=False)
+
+        # Crosshair tooltip for port chart
+        self._port_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen("#888", style=pg.QtCore.Qt.PenStyle.DashLine))
+        self._port_vline.setVisible(False)
+        self.port_chart.addItem(self._port_vline)
+
+        self._port_label = pg.TextItem("", color="#333", anchor=(0, 1),
+                                       fill=pg.mkBrush("#ffffffe0"))
+        self._port_label.setFont(pg.QtGui.QFont("Segoe UI", 9))
+        self._port_label.setVisible(False)
+        self.port_chart.addItem(self._port_label)
+
+        self.port_chart.scene().sigMouseMoved.connect(self._on_port_mouse_move)
+        self._port_data = []
+
         pf_layout.addWidget(self.port_chart)
 
         layout.addWidget(port_frame)
@@ -205,8 +221,22 @@ class DashboardWidget(QWidget):
         self.timeline_chart.setMinimumHeight(120)
         self.timeline_chart.setMaximumHeight(160)
         self.timeline_chart.setBackground(None)
-        self.timeline_chart.setMouseEnabled(x=False, y=False)
+        self.timeline_chart.setMouseEnabled(x=True, y=False)
         self.timeline_chart.showGrid(x=True, y=True, alpha=0.15)
+
+        # Crosshair tooltip for timeline
+        self._timeline_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen("#888", style=pg.QtCore.Qt.PenStyle.DashLine))
+        self._timeline_vline.setVisible(False)
+        self.timeline_chart.addItem(self._timeline_vline)
+
+        self._timeline_label = pg.TextItem("", color="#333", anchor=(0, 1),
+                                           fill=pg.mkBrush("#ffffffe0"))
+        self._timeline_label.setFont(pg.QtGui.QFont("Segoe UI", 9))
+        self._timeline_label.setVisible(False)
+        self.timeline_chart.addItem(self._timeline_label)
+
+        self.timeline_chart.scene().sigMouseMoved.connect(self._on_timeline_mouse_move)
+
         tf_layout.addWidget(self.timeline_chart)
 
         layout.addWidget(timeline_frame)
@@ -310,17 +340,27 @@ class DashboardWidget(QWidget):
 
     def _update_port_chart(self):
         self.port_chart.clear()
+        # Re-add crosshair elements after clear
+        self.port_chart.addItem(self._port_vline)
+        self.port_chart.addItem(self._port_label)
+        self._port_vline.setVisible(False)
+        self._port_label.setVisible(False)
+
         try:
             svc_stats = self.engine.db.get_port_service_stats()
         except Exception:
+            self._port_data = []
             return
 
         if not svc_stats:
             self._show_empty_chart(self.port_chart, "暂无端口数据")
+            self._port_data = []
             return
 
         services = [s["service"][:10] for s in svc_stats]
+        full_services = [s["service"] for s in svc_stats]
         counts = [s["cnt"] for s in svc_stats]
+        self._port_data = list(zip(range(len(counts)), counts, full_services))
 
         x = np.arange(len(counts))
         palette = [
@@ -351,21 +391,58 @@ class DashboardWidget(QWidget):
         self.port_chart.setYRange(0, max(counts) * 1.4)
         self.port_chart.setXRange(-0.6, len(counts) - 0.4)
 
+    def _on_port_mouse_move(self, pos):
+        if not self._port_data:
+            return
+        vb = self.port_chart.getViewBox()
+        if vb is None:
+            return
+        mouse_point = vb.mapSceneToView(pos)
+        x = mouse_point.x()
+
+        nearest = None
+        min_dist = float("inf")
+        for idx, cnt, svc in self._port_data:
+            dist = abs(idx - x)
+            if dist < min_dist:
+                min_dist = dist
+                nearest = (idx, cnt, svc)
+
+        if nearest and min_dist < 0.5:
+            idx, cnt, svc = nearest
+            self._port_vline.setPos(idx)
+            self._port_vline.setVisible(True)
+            self._port_label.setText(f"  {svc}: {cnt}")
+            self._port_label.setPos(idx, cnt)
+            self._port_label.setVisible(True)
+        else:
+            self._port_vline.setVisible(False)
+            self._port_label.setVisible(False)
+
     def _update_timeline_chart(self):
         self.timeline_chart.clear()
+        # Re-add crosshair elements after clear
+        self.timeline_chart.addItem(self._timeline_vline)
+        self.timeline_chart.addItem(self._timeline_label)
+        self._timeline_vline.setVisible(False)
+        self._timeline_label.setVisible(False)
+
         try:
             timeline = self.engine.db.get_vuln_timeline(30)
         except Exception:
             self._show_empty_chart(self.timeline_chart, "暂无趋势数据")
+            self._timeline_data = []
             return
 
         if not timeline:
             self._show_empty_chart(self.timeline_chart, "暂无趋势数据")
+            self._timeline_data = []
             return
 
         timeline.reverse()
         counts = [t["cnt"] for t in timeline]
         dates = [t["day"] for t in timeline]
+        self._timeline_data = list(zip(range(len(counts)), counts, dates))
 
         x = np.arange(len(counts))
         pen = pg.mkPen(color="#c62828", width=2)
@@ -381,6 +458,35 @@ class DashboardWidget(QWidget):
 
         if counts:
             self.timeline_chart.setYRange(0, max(counts) * 1.3 + 1)
+
+    def _on_timeline_mouse_move(self, pos):
+        if not self._timeline_data:
+            return
+        vb = self.timeline_chart.getViewBox()
+        if vb is None:
+            return
+        mouse_point = vb.mapSceneToView(pos)
+        x = mouse_point.x()
+
+        # Find nearest data point
+        nearest = None
+        min_dist = float("inf")
+        for idx, cnt, date in self._timeline_data:
+            dist = abs(idx - x)
+            if dist < min_dist:
+                min_dist = dist
+                nearest = (idx, cnt, date)
+
+        if nearest and min_dist < 0.5:
+            idx, cnt, date = nearest
+            self._timeline_vline.setPos(idx)
+            self._timeline_vline.setVisible(True)
+            self._timeline_label.setText(f"  {date}\n  漏洞: {cnt}")
+            self._timeline_label.setPos(idx, cnt)
+            self._timeline_label.setVisible(True)
+        else:
+            self._timeline_vline.setVisible(False)
+            self._timeline_label.setVisible(False)
 
     def _show_empty_chart(self, chart, text):
         msg = pg.TextItem(text=text, color="#aaa", anchor=(0.5, 0.5))

@@ -1,5 +1,65 @@
 # Changelog
 
+## v2.0.0 (2026-05-27)
+
+### 漏洞情报对接
+- 新增 NVD 漏洞库客户端（关键词/CVE-ID/CPE 查询，API key 支持，缓存）
+- 新增 Shodan 资产情报客户端（主机查询/搜索/漏洞关联，可选 shodan 库）
+- 新增 Fofa 资产搜索引擎客户端（Base64 编码查询，email+key 认证）
+- 新增"情报中心"页面，三 Tab 布局（NVD/Shodan/Fofa），异步查询
+- 情报查询结果自动缓存到 intel_queries 表（TTL 可配置）
+
+### 后渗透扩展（7 个新模块）
+- lateral_psexec: SMB PsExec 横向移动（impacket，服务创建执行）
+- lateral_wmi: WMI 远程执行（DCOM 连接，Win32_Process.Create）
+- cred_dump: 凭据提取（SAM/Shadow/SSH 密钥/浏览器密码/WiFi 密码）
+- tunnel_reverse: 反向 Shell 监听器（等待目标回连，交互式会话）
+- tunnel_portforward: TCP 端口转发（本地端口映射到远程端口）
+- persistence_check: 持久化机制检测（计划任务/启动项/服务/SSH/WMI/Systemd）
+- persistence_install: 持久化安装/清除（cron/startup/systemd/ssh/profile）
+
+### 报告升级
+- 新增 OWASP Top 10 2021 合规映射（15 种 vuln_type 自动分类）
+- 新增 CIS Benchmark 合规映射（12 个控制项）
+- 新增风险矩阵（严重程度 × 可能性 网格）
+- PDF 导出新增封面页（公司名称/Logo/日期/机密标记）
+- PDF 导出新增目录页
+- PDF 导出新增 OWASP/CIS/风险矩阵章节
+- 报告页面新增公司信息栏（名称输入 + Logo 路径浏览）
+- 报告页面新增合规复选框（OWASP Top 10/CIS Benchmark/风险矩阵）
+- CVE 匹配和 AutoPilot 写入漏洞时自动标记 OWASP 分类
+
+### 新增主题（3 个）
+- Cyberpunk: 深黑底 + 霓虹青/品红发光边框，Cascadia Mono 字体，赛博朋克黑客风
+- Dracula: 紫调暗色主题，社区经典配色，Cascadia Mono 字体
+- Nord: 冷蓝灰暗色，极简克制的北欧风，Segoe UI 字体
+
+### 新增功能模块（8 个）
+- ping_sweep: 网络主机发现（ICMP 原始套接字 + TCP 连接回退，CIDR/范围解析）
+- ssl_checker: SSL/TLS 证书分析（协议版本枚举、密码套件、证书有效性/密钥/签名算法）
+- sniffer: 本地网络嗅探统计（原始套接字 SYN 捕获 + netstat 连接分析）
+- header_analyzer: HTTP 安全头审计（8 项安全头检查）+ 响应信息泄露检测 + Cookie 安全 + CORS
+- xxe_scanner: XXE 注入检测（文件读取/SSRF/参数实体/JSON XXE/SVG payload）
+- open_redirect: 开放重定向检测（30+ 常见重定向参数 + Meta refresh/JS 重定向）
+- host_header_inject: Host Header 注入（X-Forwarded-Host/X-Host/双 Host 头/缓存投毒）
+- hash_crack: 哈希识别 + 字典破解（MD5/SHA1/SHA256/SHA512/NTLM/bcrypt，盐值支持）
+
+### 红队对抗测试模块（10 个，用于 Formless 杀软验证）
+- eicar_generator: EICAR 标准测试文件生成（静态检测验证，多种变体：压缩/编码/嵌入/双扩展名）
+- shellcode_injector: 进程注入测试（远程线程注入/DLL 注入/进程镂空，NOP+INT3 无害 payload）
+- ransomware_sim: 勒索软件行为模拟（文件发现→密钥生成→批量加密→勒索信投放，干跑模式安全）
+- keylogger_sim: 键盘记录行为模拟（GetAsyncKeyState 轮询/SetWindowsHookEx 钩子）
+- file_encryptor: 文件批量加密测试（XOR/RC4/AES，干跑模式，支持恢复）
+- c2_beacon: C2 信标行为模拟（HTTP/HTTPS/DNS/TCP 回连，随机 UA+抖动间隔）
+- process_hollow: 进程镂空/傀儡进程测试（NtUnmapViewOfSection/WriteProcessMemory/APC 注入）
+- av_evasion: 杀软规避技术测试（AMSI 绕过/ETW 补丁/UAC 绕过/Defender 规避）
+- credential_dump: 凭据转储测试（LSASS 内存/SAM 注册表/DPAPI/浏览器凭据/Credential Guard）
+
+### 基础设施
+- DB 新增 intel_queries 表（情报缓存）
+- vulnerabilities 表新增 owasp_category 和 cwe_id 列
+- Config 新增 intel 配置节（NVD/Shodan/Fofa API key + 缓存 TTL）
+
 ## v1.3.2 (2026-05-27)
 
 ### 输入验证

@@ -210,6 +210,8 @@ class CVEMatcher:
         if not self.db:
             return []
 
+        from modules.report.compliance import get_owasp_category
+
         all_findings = []
         for target in targets:
             tid = target.get("id")
@@ -228,13 +230,15 @@ class CVEMatcher:
 
             all_findings.extend(matches)
 
-            # Save to DB as vulnerabilities
+            # Save to DB as vulnerabilities with OWASP category
             for m in matches:
+                owasp_code, _ = get_owasp_category("cve")
                 self.db.add_vulnerability(
                     tid, "cve", m["severity"],
                     f"{m['cve_id']} ({m['service']} {m['version']})",
                     m["description"],
                     port_id=None,
+                    owasp_category=owasp_code,
                 )
 
         return all_findings

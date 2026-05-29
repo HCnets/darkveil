@@ -1,4 +1,5 @@
 import logging
+import sys
 from datetime import datetime
 
 
@@ -7,22 +8,25 @@ class Logger:
         self.logger = logging.getLogger("DarkVeil")
         self.logger.setLevel(getattr(logging, config.get("log_level", "INFO")))
 
-        fmt = logging.Formatter(
-            "[%(asctime)s] [%(levelname)s] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+        # Avoid adding duplicate handlers on repeated instantiation
+        if not self.logger.handlers:
+            fmt = logging.Formatter(
+                "[%(asctime)s] [%(levelname)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
 
-        console = logging.StreamHandler()
-        console.setFormatter(fmt)
-        self.logger.addHandler(console)
+            console = logging.StreamHandler(sys.stdout)
+            console.setFormatter(fmt)
+            self.logger.addHandler(console)
 
-        log_file = config.get("log_file", "darkveil.log")
-        try:
-            fh = logging.FileHandler(log_file, encoding="utf-8")
-            fh.setFormatter(fmt)
-            self.logger.addHandler(fh)
-        except Exception:
-            pass
+            log_file = config.get("log_file", "darkveil.log")
+            if log_file:
+                try:
+                    fh = logging.FileHandler(log_file, encoding="utf-8")
+                    fh.setFormatter(fmt)
+                    self.logger.addHandler(fh)
+                except (OSError, IOError):
+                    pass
 
         self._callbacks = []
 
@@ -40,8 +44,11 @@ class Logger:
         for cb in self._callbacks[:]:
             try:
                 cb(timestamp, level, msg)
-            except Exception as e:
-                self.logger.debug(f"回调异常: {e}")
+            except Exception:
+                # Avoid recursion: use stdlib logger directly, not self.logger
+                logging.getLogger("DarkVeil.callbacks").debug(
+                    "回调异常: %s", level
+                )
 
     def info(self, msg):
         self.logger.info(msg)

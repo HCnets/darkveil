@@ -1,12 +1,18 @@
 import requests
 
-requests.packages.urllib3.disable_warnings()
-
 
 def get_session(config=None):
     """Create a requests.Session with proxy and default settings from config."""
     session = requests.Session()
-    session.verify = False
+
+    # SSL verification: read from config, default to False for pentesting compatibility
+    verify_ssl = False
+    if config:
+        verify_ssl = config.get("verify_ssl", False)
+    session.verify = verify_ssl
+    if not verify_ssl:
+        requests.packages.urllib3.disable_warnings()
+
     session.headers["User-Agent"] = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -38,6 +44,13 @@ def get_session(config=None):
         session._default_timeout = timeout
 
     return session
+
+
+def get_verify_setting(config=None):
+    """Get SSL verify setting from config."""
+    if config:
+        return config.get("verify_ssl", False)
+    return False
 
 
 def get_proxies_dict(config):

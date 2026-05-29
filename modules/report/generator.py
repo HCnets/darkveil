@@ -1,5 +1,8 @@
 from datetime import datetime
 from html import escape as html_escape
+from modules.report.compliance import (
+    generate_owasp_section, generate_cis_section, generate_risk_matrix,
+)
 
 
 class ReportGenerator:
@@ -24,9 +27,10 @@ class ReportGenerator:
             return "低危"
         return "安全"
 
-    def generate_markdown(self, sections=None):
+    def generate_markdown(self, sections=None, company_name=""):
         if sections is None:
-            sections = {"summary": True, "targets": True, "vulns": True, "high_risk": True, "history": True}
+            sections = {"summary": True, "targets": True, "vulns": True, "high_risk": True,
+                        "history": True, "owasp": False, "cis": False, "risk_matrix": False}
 
         lines = []
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -34,7 +38,10 @@ class ReportGenerator:
         targets = self.db.get_targets()
         vulns = self.db.get_vulnerabilities()
 
-        lines.append("# DarkVeil 安全评估报告")
+        if company_name:
+            lines.append(f"# {company_name} - 安全评估报告")
+        else:
+            lines.append("# DarkVeil 安全评估报告")
         lines.append(f"\n生成时间: {now}\n")
 
         # 执行摘要
@@ -152,17 +159,36 @@ class ReportGenerator:
                         f"{h.get('target')} | {h.get('status')} |"
                     )
 
+        # OWASP Top 10 合规
+        if sections.get("owasp") and vulns:
+            owasp_md = generate_owasp_section(vulns)
+            if owasp_md:
+                lines.append(owasp_md)
+
+        # CIS Benchmark 合规
+        if sections.get("cis") and vulns:
+            cis_md = generate_cis_section(vulns)
+            if cis_md:
+                lines.append(cis_md)
+
+        # 风险矩阵
+        if sections.get("risk_matrix") and vulns:
+            matrix_md = generate_risk_matrix(vulns)
+            if matrix_md:
+                lines.append(matrix_md)
+
         lines.append("\n---\n*报告由 DarkVeil 自动生成*")
         return "\n".join(lines)
 
-    def generate_html(self, sections=None):
-        md = self.generate_markdown(sections=sections)
+    def generate_html(self, sections=None, company_name=""):
+        md = self.generate_markdown(sections=sections, company_name=company_name)
         html_body = self._md_to_html(md)
+        report_title = f"{company_name} - 安全评估报告" if company_name else "DarkVeil 安全评估报告"
         return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>DarkVeil 安全评估报告</title>
+<title>{html_escape(report_title)}</title>
 <style>
 body {{ font-family: -apple-system, "Microsoft YaHei", sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; color: #333; line-height: 1.6; }}
 h1 {{ color: #1a1a1a; border-bottom: 2px solid #0078d4; padding-bottom: 10px; }}

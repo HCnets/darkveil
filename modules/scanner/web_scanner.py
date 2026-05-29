@@ -1,10 +1,8 @@
 import re
 import time
-import requests
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+from requests import RequestException
 from modules.http_utils import get_session
-
-requests.packages.urllib3.disable_warnings()
 
 
 SQLI_PAYLOADS = [
@@ -129,7 +127,7 @@ class WebScanner:
                         "evidence": f"HTTP {resp.status_code}, 大小 {len(resp.text)} bytes",
                         "recommendation": f"通过 Web 服务器配置禁止访问 {path}",
                     })
-            except requests.RequestException:
+            except RequestException:
                 pass
         return findings
 
@@ -137,7 +135,7 @@ class WebScanner:
         findings = []
         try:
             resp = self._session.get(base_url, timeout=self.timeout)
-        except requests.RequestException:
+        except RequestException:
             return findings
 
         parsed = urlparse(base_url)
@@ -195,7 +193,7 @@ class WebScanner:
                                     "recommendation": "使用参数化查询，禁止拼接 SQL",
                                 })
                                 break
-                except requests.RequestException:
+                except RequestException:
                     pass
         return findings
 
@@ -203,7 +201,7 @@ class WebScanner:
         findings = []
         try:
             resp = self._session.get(base_url, timeout=self.timeout)
-        except requests.RequestException:
+        except RequestException:
             return findings
 
         parsed = urlparse(base_url)
@@ -245,7 +243,7 @@ class WebScanner:
                             "evidence": f"Payload: {xss['payload']}",
                             "recommendation": "对输出进行 HTML 编码，设置 CSP 头",
                         })
-                except requests.RequestException:
+                except RequestException:
                     pass
         return findings
 
@@ -253,7 +251,7 @@ class WebScanner:
         findings = []
         try:
             resp = self._session.get(base_url, timeout=self.timeout)
-        except requests.RequestException:
+        except RequestException:
             return findings
 
         headers = resp.headers

@@ -10,12 +10,14 @@ SERVICE_EXPLOIT_MAP = {
     "https": ["sqli_exploiter", "ssrf_detector", "cmdi_detector", "cors_checker",
               "unauth_scanner", "dir_scanner", "api_fuzzer", "cve_checker"],
     "rdp": ["rdp_brute"],
-    "smb": ["smb_brute"],
+    "smb": ["smb_brute", "lateral_psexec"],
     "snmp": ["snmp_brute"],
     "dns": ["dns_zone_transfer"],
     "redis": ["redis_brute"],
     "postgres": ["postgres_brute"],
     "smtp": ["smtp_brute"],
+    "microsoft-ds": ["lateral_psexec"],
+    "epmap": ["lateral_wmi"],
 }
 
 STAGE_NAMES = [
@@ -152,11 +154,15 @@ class AutoPilot:
 
         self._results["web_vulns"] = all_web_vulns
         if all_web_vulns and db and tid:
+            from modules.report.compliance import get_owasp_category
             for v in all_web_vulns:
+                vtype = v.get("type", "web")
+                owasp_code, _ = get_owasp_category(vtype)
                 db.add_vulnerability(
-                    tid, v.get("type", "web"), v.get("severity", "MEDIUM"),
+                    tid, vtype, v.get("severity", "MEDIUM"),
                     v.get("title", ""), v.get("description"), v.get("evidence"),
                     v.get("recommendation"),
+                    owasp_category=owasp_code,
                 )
 
         callback(2, f"Web 扫描完成: {len(all_web_vulns)} 个漏洞", 50)

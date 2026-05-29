@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QPlainTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QTextCursor, QFont
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QEvent
+from PyQt6.QtGui import QTextCursor, QFont, QKeySequence, QShortcut
 
 
 def _escape_html(text):
@@ -12,6 +12,73 @@ class LogBridge(QObject):
 
     def __init__(self):
         super().__init__()
+
+
+class TerminalInput(QLineEdit):
+    """QLineEdit with command history and tab completion."""
+
+    _COMMANDS = [
+        "help", "clear", "stats", "targets", "exploit list",
+        "scan", "web",
+    ]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._history = []
+        self._history_index = -1
+        self._pending_text = ""
+
+    def keyPressEvent(self, event):
+        key = event.key()
+
+        if key == Qt.Key.Key_Up:
+            if not self._history:
+                return
+            if self._history_index == -1:
+                self._pending_text = self.text()
+            if self._history_index < len(self._history) - 1:
+                self._history_index += 1
+                self.setText(self._history[self._history_index])
+            return
+
+        if key == Qt.Key.Key_Down:
+            if self._history_index <= 0:
+                self._history_index = -1
+                self.setText(self._pending_text)
+                return
+            self._history_index -= 1
+            self.setText(self._history[self._history_index])
+            return
+
+        if key == Qt.Key.Key_Tab:
+            self._tab_complete()
+            return
+
+        # Reset history navigation on any other key
+        self._history_index = -1
+        super().keyPressEvent(event)
+
+    def add_history(self, cmd):
+        if cmd and (not self._history or self._history[0] != cmd):
+            self._history.insert(0, cmd)
+        self._history_index = -1
+        self._pending_text = ""
+
+    def _tab_complete(self):
+        text = self.text().strip()
+        if not text:
+            return
+        matches = [c for c in self._COMMANDS if c.startswith(text)]
+        if len(matches) == 1:
+            self.setText(matches[0] + " ")
+        elif len(matches) > 1:
+            # Find common prefix
+            prefix = matches[0]
+            for m in matches[1:]:
+                while not m.startswith(prefix):
+                    prefix = prefix[:-1]
+            if len(prefix) > len(text):
+                self.setText(prefix)
 
 
 class TerminalWidget(QWidget):
@@ -62,8 +129,8 @@ class TerminalWidget(QWidget):
             }
         """)
 
-        self.input = QLineEdit()
-        self.input.setPlaceholderText("输入命令... (help 查看帮助)")
+        self.input = TerminalInput()
+        self.input.setPlaceholderText("输入命令... (↑↓ 历史, Tab 补全, help 帮助)")
         self.input.setStyleSheet("""
             QLineEdit {
                 background: #ffffff;
@@ -86,9 +153,13 @@ class TerminalWidget(QWidget):
         input_layout.addWidget(self.input)
         layout.addLayout(input_layout)
 
+        # Ctrl+K to clear terminal
+        QShortcut(QKeySequence("Ctrl+K"), self, activated=self.clear)
+
     def _on_command(self):
         cmd = self.input.text().strip()
         if cmd:
+            self.input.add_history(cmd)
             self.write(f"> {cmd}", "#0078d4")
             self.input.clear()
             self.command_entered.emit(cmd)

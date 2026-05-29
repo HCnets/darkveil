@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QGroupBox, QScrollArea, QLineEdit, QCheckBox
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from gui.widgets.dashboard import DashboardWidget
 from gui.widgets.terminal_widget import TerminalWidget
 from gui.pages.scanner_page import ScannerPage
@@ -14,6 +15,7 @@ from gui.pages.monitor_page import MonitorPage
 from gui.pages.honeypot_page import HoneypotPage
 from gui.pages.autopilot_page import AutoPilotPage
 from gui.pages.tools_page import ToolsPage
+from gui.pages.intel_page import IntelPage
 from gui.widgets.global_search import GlobalSearchWidget
 from modules.scanner.port_scanner import PortScanner
 from modules.scanner.service_detector import ServiceDetector
@@ -31,6 +33,7 @@ NAV_ITEMS = [
     ("实用工具", "tools"),
     ("流量监控", "monitor"),
     ("蜜罐系统", "honeypot"),
+    ("情报中心", "intel"),
     ("安全报告", "report"),
     ("系统设置", "settings"),
 ]
@@ -50,6 +53,16 @@ class MainWindow(QMainWindow):
             config.get("ui.window_width", 1400),
             config.get("ui.window_height", 900),
         )
+
+        # Restore window position
+        win_x = config.get("ui.window_x")
+        win_y = config.get("ui.window_y")
+        if win_x is not None and win_y is not None:
+            self.move(win_x, win_y)
+
+        # Restore maximized state
+        if config.get("ui.window_maximized", False):
+            self.showMaximized()
 
         self._init_modules()
         self._setup_ui()
@@ -83,7 +96,7 @@ class MainWindow(QMainWindow):
         sidebar.setFixedWidth(180)
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(0)
+        sidebar_layout.setSpacing(2)
 
         logo_frame = QFrame()
         logo_frame.setObjectName("sidebar")
@@ -116,6 +129,7 @@ class MainWindow(QMainWindow):
             btn = QPushButton(f"  {text}")
             btn.setObjectName("nav_btn")
             btn.setCheckable(True)
+            btn.setFixedHeight(34)
             btn.setProperty("page_id", page_id)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             sidebar_layout.addWidget(btn)
@@ -123,13 +137,14 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addStretch()
 
-        version_label = QLabel("  v1.3.0")
+        version_label = QLabel("  v2.0.0")
         version_label.setStyleSheet("color: #666; font-size: 11px; padding: 8px; background: transparent;")
         sidebar_layout.addWidget(version_label)
 
         main_layout.addWidget(sidebar)
 
         content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter = content_splitter
 
         self.pages = QStackedWidget()
 
@@ -143,6 +158,7 @@ class MainWindow(QMainWindow):
         self.tools_page = ToolsPage(self.engine)
         self.monitor_page = MonitorPage(self.engine)
         self.honeypot_page = HoneypotPage(self.engine)
+        self.intel_page = IntelPage(self.engine)
         self.report_page = ReportPage(self.engine)
 
         settings_page = self._build_settings_page()
@@ -155,6 +171,7 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.tools_page)
         self.pages.addWidget(self.monitor_page)
         self.pages.addWidget(self.honeypot_page)
+        self.pages.addWidget(self.intel_page)
         self.pages.addWidget(self.report_page)
         self.pages.addWidget(settings_page)
 
@@ -164,7 +181,11 @@ class MainWindow(QMainWindow):
         self.terminal.setFixedHeight(170)
         content_splitter.addWidget(self.terminal)
 
-        content_splitter.setSizes([650, 170])
+        saved_sizes = self.config.get("ui.splitter_sizes")
+        if saved_sizes and len(saved_sizes) == 2:
+            content_splitter.setSizes(saved_sizes)
+        else:
+            content_splitter.setSizes([650, 170])
         main_layout.addWidget(content_splitter)
 
         self.nav_btn_group[0].setChecked(True)
@@ -179,6 +200,56 @@ class MainWindow(QMainWindow):
         # Toast notifications for engine events
         self.engine.on("scan_complete", self._on_scan_complete_toast)
         self.engine.on("vuln_found", self._on_vuln_found_toast)
+
+        # Keyboard shortcuts
+        self._setup_shortcuts()
+
+    def _setup_shortcuts(self):
+        # Ctrl+1~9 to switch pages
+        for i in range(min(9, len(NAV_ITEMS))):
+            key = f"Ctrl+{i + 1}"
+            QShortcut(QKeySequence(key), self, lambda idx=i: self._switch_to_page(idx))
+
+        # Ctrl+0 for settings (page 10)
+        if len(NAV_ITEMS) >= 10:
+            QShortcut(QKeySequence("Ctrl+0"), self, lambda: self._switch_to_page(10))
+
+        # Ctrl+R to refresh current page
+        QShortcut(QKeySequence("Ctrl+R"), self, self._refresh_current_page)
+
+        # Ctrl+F to focus global search
+        QShortcut(QKeySequence("Ctrl+F"), self, self._focus_search)
+
+        # Ctrl+` to toggle terminal focus
+        QShortcut(QKeySequence("Ctrl+`"), self, self._toggle_terminal_focus)
+
+        # Escape to return to dashboard
+        QShortcut(QKeySequence("Escape"), self, lambda: self._switch_to_page(0))
+
+    def _switch_to_page(self, index):
+        if 0 <= index < len(self.nav_btn_group):
+            self.nav_btn_group[index].click()
+
+    def _refresh_current_page(self):
+        page_id = NAV_ITEMS[self.pages.currentIndex()][1] if self.pages.currentIndex() < len(NAV_ITEMS) else ""
+        if page_id == "dashboard":
+            self.dashboard.refresh()
+        elif page_id == "target":
+            try:
+                self.target_page.refresh()
+            except Exception:
+                pass
+
+    def _focus_search(self):
+        if hasattr(self, 'search_widget'):
+            self.search_widget.setFocus()
+
+    def _toggle_terminal_focus(self):
+        if self.terminal.input.hasFocus():
+            # Return focus to main content
+            self.pages.currentWidget().setFocus()
+        else:
+            self.terminal.input.setFocus()
 
     def _on_scan_complete_toast(self, target, count):
         from gui.widgets.toast import show_toast
@@ -367,7 +438,7 @@ class MainWindow(QMainWindow):
         about_group = QGroupBox("关于")
         about_layout = QVBoxLayout(about_group)
         about_layout.addWidget(QLabel("DarkVeil - 攻防一体安全平台"))
-        about_layout.addWidget(QLabel("版本: 0.1.0"))
+        about_layout.addWidget(QLabel("版本: 2.0.0"))
         about_layout.addWidget(QLabel("技术栈: Python + PyQt6"))
         layout.addWidget(about_group)
 
@@ -405,8 +476,20 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         try:
-            self.config.set("ui.window_width", self.width())
-            self.config.set("ui.window_height", self.height())
+            # Save window geometry
+            if self.isMaximized():
+                self.config.set("ui.window_maximized", True)
+            else:
+                self.config.set("ui.window_maximized", False)
+                self.config.set("ui.window_width", self.width())
+                self.config.set("ui.window_height", self.height())
+                self.config.set("ui.window_x", self.x())
+                self.config.set("ui.window_y", self.y())
+
+            # Save splitter state
+            if hasattr(self, 'content_splitter'):
+                sizes = self.content_splitter.sizes()
+                self.config.set("ui.splitter_sizes", sizes)
         except Exception:
             pass
 

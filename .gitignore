@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 *.so
 *.egg-info/
-dist/
-build/
 *.egg
 
 # Virtual environment
@@ -22,14 +20,17 @@ env/
 # Application
 *.db
 *.log
-*.json
 darkveil.json
-darkveil.log
 
-# PyInstaller
-*.spec
+# PyInstaller build outputs
 build/
 dist/
+dist[0-9]*/
+*.spec
+
+# Runtime data
+127.0.0.1/
+localhost/
 
 # OS
 .DS_Store

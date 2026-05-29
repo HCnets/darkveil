@@ -119,11 +119,58 @@ class PDFReport(FPDF):
         self.cell(0, 7, str(text), new_x="LMARGIN", new_y="NEXT")
 
 
-def generate_pdf(db, output_path):
+def generate_pdf(db, output_path, company_name="", logo_path="", sections=None):
     """Generate a PDF report from database."""
+    if sections is None:
+        sections = {"summary": True, "targets": True, "vulns": True, "high_risk": True,
+                    "history": True, "owasp": False, "cis": False, "risk_matrix": False}
+
     pdf = PDFReport()
     pdf.alias_nb_pages()
+
+    # Cover page
     pdf.add_page()
+    pdf.ln(60)
+    pdf._set_font("B", 28)
+    pdf.set_text_color(0, 120, 212)
+    cover_title = f"{company_name} - 安全评估报告" if company_name else "DarkVeil 安全评估报告"
+    pdf.cell(0, 15, cover_title, new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(10)
+
+    if logo_path and os.path.exists(logo_path):
+        try:
+            pdf.image(logo_path, x=(pdf.w - 60) / 2, w=60)
+            pdf.ln(10)
+        except Exception:
+            pass
+
+    pdf._set_font("", 12)
+    ts = datetime.now().strftime("%Y-%m-%d")
+    pdf.cell(0, 8, f"报告日期: {ts}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 8, "分类: 机密", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 8, "由 DarkVeil 自动生成", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    # TOC page
+    pdf.add_page()
+    pdf.section_title("目录")
+    toc_items = [
+        ("1", "评估概览"),
+        ("2", "目标详情"),
+        ("3", "漏洞汇总"),
+        ("4", "高危漏洞详情"),
+        ("5", "扫描历史"),
+    ]
+    if sections.get("owasp"):
+        toc_items.append(("6", "OWASP Top 10 2021 合规映射"))
+    if sections.get("cis"):
+        toc_items.append(("7", "CIS Benchmark 合规映射"))
+    if sections.get("risk_matrix"):
+        toc_items.append(("8", "风险矩阵"))
+
+    for num, title in toc_items:
+        pdf._set_font("", 11)
+        pdf.cell(0, 8, f"  {num}. {title}", new_x="LMARGIN", new_y="NEXT")
 
     stats = db.get_stats()
     targets = db.get_targets()
@@ -225,6 +272,77 @@ def generate_pdf(db, output_path):
             ])
         pdf.add_table(["Time", "Type", "Target", "Status"], rows,
                       [40, 25, 60, 30])
+
+    # OWASP Top 10
+    if sections.get("owasp") and vulns:
+        from modules.report.compliance import get_owasp_category
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for v in vulns:
+            code, name = get_owasp_category(v.get("vuln_type", ""))
+            grouped[(code, name)].append(v)
+        if grouped:
+            pdf.add_page()
+            pdf.section_title("OWASP Top 10 2021 合规映射")
+            for (code, name) in sorted(grouped.keys()):
+                items = grouped[(code, name)]
+                pdf.sub_title(f"{code} - {name} ({len(items)} 项)")
+                rows = []
+                for v in items[:15]:
+                    rows.append([
+                        v.get("severity", ""), (v.get("title") or "")[:40],
+                        str(v.get("target_id", "")),
+                    ])
+                pdf.add_table(["严重程度", "标题", "目标"], rows, [30, 80, 40])
+
+    # CIS Benchmark
+    if sections.get("cis") and vulns:
+        from modules.report.compliance import get_cis_controls
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for v in vulns:
+            controls = get_cis_controls(v.get("vuln_type", ""))
+            for ctrl in controls:
+                grouped[ctrl].append(v)
+        if grouped:
+            pdf.add_page()
+            pdf.section_title("CIS Benchmark 合规映射")
+            for ctrl in sorted(grouped.keys()):
+                items = grouped[ctrl]
+                pdf.sub_title(f"{ctrl} ({len(items)} 项)")
+                rows = []
+                for v in items[:15]:
+                    rows.append([
+                        v.get("severity", ""), v.get("vuln_type", ""),
+                        (v.get("title") or "")[:35],
+                    ])
+                pdf.add_table(["严重程度", "类型", "标题"], rows, [30, 35, 80])
+
+    # Risk matrix
+    if sections.get("risk_matrix") and vulns:
+        pdf.add_page()
+        pdf.section_title("风险矩阵")
+        severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+        likelihoods = ["Certain", "Likely", "Possible", "Unlikely"]
+        sev_likeliness = {"CRITICAL": "Certain", "HIGH": "Likely", "MEDIUM": "Possible", "LOW": "Unlikely"}
+        matrix = {s: {l: 0 for l in likelihoods} for s in severities}
+        for v in vulns:
+            sev = v.get("severity", "MEDIUM")
+            lk = sev_likeliness.get(sev, "Possible")
+            if sev in matrix:
+                matrix[sev][lk] += 1
+
+        rows = []
+        for sev in severities:
+            row = [sev]
+            for l in likelihoods:
+                cnt = matrix[sev][l]
+                row.append(str(cnt) if cnt > 0 else "-")
+            rows.append(row)
+        pdf.add_table(
+            ["严重程度 \\ 可能性", "Certain", "Likely", "Possible", "Unlikely"],
+            rows, [35, 30, 30, 30, 30],
+        )
 
     pdf.output(output_path)
     return output_path

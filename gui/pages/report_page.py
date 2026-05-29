@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QTextBrowser, QFileDialog, QGroupBox, QCheckBox
+    QPushButton, QTextBrowser, QFileDialog, QGroupBox, QCheckBox, QLineEdit
 )
 from PyQt6.QtCore import Qt
 from modules.report.generator import ReportGenerator
@@ -26,32 +26,75 @@ class ReportPage(QWidget):
         # Section selection
         section_frame = QFrame()
         section_frame.setObjectName("panel")
-        section_layout = QHBoxLayout(section_frame)
-        section_layout.setSpacing(12)
+        section_layout = QVBoxLayout(section_frame)
+        section_layout.setSpacing(6)
 
-        section_layout.addWidget(QLabel("报告章节:"))
+        section_label = QLabel("报告章节:")
+        section_layout.addWidget(section_label)
+
+        cb_row1 = QHBoxLayout()
+        cb_row1.setSpacing(12)
         self.section_summary = QCheckBox("执行摘要")
         self.section_summary.setChecked(True)
-        section_layout.addWidget(self.section_summary)
+        cb_row1.addWidget(self.section_summary)
 
         self.section_targets = QCheckBox("目标详情")
         self.section_targets.setChecked(True)
-        section_layout.addWidget(self.section_targets)
+        cb_row1.addWidget(self.section_targets)
 
         self.section_vulns = QCheckBox("漏洞汇总")
         self.section_vulns.setChecked(True)
-        section_layout.addWidget(self.section_vulns)
+        cb_row1.addWidget(self.section_vulns)
 
         self.section_high_risk = QCheckBox("高危详情")
         self.section_high_risk.setChecked(True)
-        section_layout.addWidget(self.section_high_risk)
+        cb_row1.addWidget(self.section_high_risk)
 
         self.section_history = QCheckBox("扫描历史")
         self.section_history.setChecked(True)
-        section_layout.addWidget(self.section_history)
+        cb_row1.addWidget(self.section_history)
+        cb_row1.addStretch()
+        section_layout.addLayout(cb_row1)
 
-        section_layout.addStretch()
+        cb_row2 = QHBoxLayout()
+        cb_row2.setSpacing(12)
+        self.section_owasp = QCheckBox("OWASP Top 10")
+        cb_row2.addWidget(self.section_owasp)
+
+        self.section_cis = QCheckBox("CIS Benchmark")
+        cb_row2.addWidget(self.section_cis)
+
+        self.section_risk_matrix = QCheckBox("风险矩阵")
+        cb_row2.addWidget(self.section_risk_matrix)
+        cb_row2.addStretch()
+        section_layout.addLayout(cb_row2)
+
         layout.addWidget(section_frame)
+
+        # Company info
+        company_frame = QFrame()
+        company_frame.setObjectName("panel")
+        company_layout = QHBoxLayout(company_frame)
+        company_layout.setSpacing(8)
+
+        company_layout.addWidget(QLabel("公司名称:"))
+        self.company_input = QLineEdit()
+        self.company_input.setPlaceholderText("可选，用于报告封面")
+        self.company_input.setFixedWidth(200)
+        company_layout.addWidget(self.company_input)
+
+        company_layout.addWidget(QLabel("Logo:"))
+        self.logo_input = QLineEdit()
+        self.logo_input.setPlaceholderText("Logo 图片路径")
+        company_layout.addWidget(self.logo_input)
+
+        self.btn_browse_logo = QPushButton("浏览")
+        self.btn_browse_logo.setFixedWidth(60)
+        self.btn_browse_logo.clicked.connect(self._browse_logo)
+        company_layout.addWidget(self.btn_browse_logo)
+
+        company_layout.addStretch()
+        layout.addWidget(company_frame)
 
         # 操作栏
         btn_frame = QFrame()
@@ -102,6 +145,9 @@ class ReportPage(QWidget):
             "vulns": self.section_vulns.isChecked(),
             "high_risk": self.section_high_risk.isChecked(),
             "history": self.section_history.isChecked(),
+            "owasp": self.section_owasp.isChecked(),
+            "cis": self.section_cis.isChecked(),
+            "risk_matrix": self.section_risk_matrix.isChecked(),
         }
 
     def _generate(self):
@@ -116,8 +162,9 @@ class ReportPage(QWidget):
         try:
             gen = ReportGenerator(db)
             sections = self._get_sections()
-            self._report_md = gen.generate_markdown(sections=sections)
-            html = gen.generate_html(sections=sections)
+            company_name = self.company_input.text().strip()
+            self._report_md = gen.generate_markdown(sections=sections, company_name=company_name)
+            html = gen.generate_html(sections=sections, company_name=company_name)
             self.preview.setHtml(html)
 
             self.btn_export_md.setEnabled(True)
@@ -159,6 +206,13 @@ class ReportPage(QWidget):
             except Exception as e:
                 self.status_label.setText(f"导出失败: {e}")
 
+    def _browse_logo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择 Logo", "", "Images (*.png *.jpg *.jpeg *.bmp)"
+        )
+        if path:
+            self.logo_input.setText(path)
+
     def _export_pdf(self):
         path, _ = QFileDialog.getSaveFileName(
             self, "导出 PDF", "darkveil_report.pdf", "PDF (*.pdf)"
@@ -167,7 +221,12 @@ class ReportPage(QWidget):
             self.status_label.setText("正在生成 PDF...")
             try:
                 from modules.report.pdf_generator import generate_pdf
-                generate_pdf(self.engine.db, path)
+                sections = self._get_sections()
+                company_name = self.company_input.text().strip()
+                logo_path = self.logo_input.text().strip()
+                generate_pdf(self.engine.db, path,
+                             company_name=company_name, logo_path=logo_path,
+                             sections=sections)
                 self.status_label.setText(f"已导出: {path}")
             except Exception as e:
                 self.status_label.setText(f"PDF 导出失败: {e}")
