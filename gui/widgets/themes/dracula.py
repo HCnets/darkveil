@@ -23,9 +23,9 @@ class DraculaTheme(ThemeBase):
     @property
     def text_primary(self): return "#f8f8f2"
     @property
-    def text_secondary(self): return "#6272a4"
+    def text_secondary(self): return "#8892b0"
     @property
-    def border_color(self): return "#44475a"
+    def border_color(self): return "#5a5e78"
     @property
     def input_bg(self): return "#282a36"
     @property

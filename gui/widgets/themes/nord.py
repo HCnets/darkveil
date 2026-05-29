@@ -159,17 +159,17 @@ QPushButton:disabled {{
 }}
 
 QPushButton#primary {{
-    background-color: {self.accent};
-    color: {self.window_bg};
+    background-color: #5e81ac;
+    color: #eceff4;
     font-weight: bold;
 }}
 
 QPushButton#primary:hover {{
-    background-color: #8fbcbb;
+    background-color: #81a1c1;
 }}
 
 QPushButton#primary:pressed {{
-    background-color: #81a1c1;
+    background-color: #4c688a;
 }}
 
 QPushButton#danger {{

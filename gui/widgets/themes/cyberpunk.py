@@ -23,9 +23,9 @@ class CyberpunkTheme(ThemeBase):
     @property
     def text_primary(self): return "#e0e0ff"
     @property
-    def text_secondary(self): return "#7070a0"
+    def text_secondary(self): return "#9898c8"
     @property
-    def border_color(self): return "#1a1a3a"
+    def border_color(self): return "#2a2a5a"
     @property
     def input_bg(self): return "#0a0a18"
     @property
@@ -43,7 +43,7 @@ class CyberpunkTheme(ThemeBase):
     @property
     def selection_bg(self): return "#ff00ff"
     @property
-    def selection_fg(self): return "#000000"
+    def selection_fg(self): return "#ffffff"
     @property
     def scrollbar_bg(self): return "#0a0a14"
     @property
