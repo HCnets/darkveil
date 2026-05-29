@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class _XPLunaBase(ThemeBase):
     """XP Luna 共用基础样式"""
     font_family = "Tahoma"
@@ -77,7 +76,7 @@ QPushButton{ident} {{
     border: 1px solid #808080;
     border-radius: 3px;
     padding: 4px 12px;
-    min-height: 28px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
 }}
@@ -179,8 +178,8 @@ QHeaderView::section {{
 QLineEdit, QSpinBox {{
     background-color: {self.input_bg};
     border: 2px inset #7f9db9;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
     color: {self.text_primary};
@@ -193,25 +192,15 @@ QLineEdit:focus, QSpinBox:focus {{
 QComboBox {{
     background-color: {self.button_bg};
     border: 1px solid #808080;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
     color: {self.text_primary};
 }}
 
 QComboBox::drop-down {{
-    border: 1px solid #808080;
     width: 20px;
-    background-color: {self.button_bg};
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 3px solid transparent;
-    border-right: 3px solid transparent;
-    border-top: 4px solid #000000;
-    margin-right: 4px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -307,10 +296,6 @@ QTabBar::tab:selected {{
     font-weight: bold;
 }}
 
-QTabBar::tab:hover:!selected {{
-    background-color: #e3dfd2;
-}}
-
 QProgressBar {{
     background-color: #d4d0c8;
     border: 1px solid #808080;
@@ -335,15 +320,15 @@ QTextBrowser#terminal {{
 }}
 
 QCheckBox {{
-    spacing: 4px;
+    spacing: 5px;
     color: {self.text_primary};
     background: transparent;
     font-family: "Tahoma";
 }}
 
 QCheckBox::indicator {{
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     border: 1px solid #808080;
     background-color: {self.input_bg};
 }}

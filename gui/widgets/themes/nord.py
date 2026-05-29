@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class NordTheme(ThemeBase):
     name = "nord"
     display_name = "Nord"
@@ -186,7 +185,7 @@ QLineEdit, QSpinBox, QComboBox {{
     background-color: {self.input_bg};
     border: 1px solid {self.input_border};
     border-radius: 4px;
-    padding: 5px 8px;
+    padding: 6px 8px;
     min-height: 28px;
     color: {self.text_primary};
 }}
@@ -196,16 +195,7 @@ QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
 }}
 
 QComboBox::drop-down {{
-    border: none;
     width: 24px;
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid {self.text_secondary};
-    margin-right: 6px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -301,6 +291,7 @@ QTabBar::tab:selected {{
     background-color: {self.panel_bg};
     color: {self.accent};
     font-weight: bold;
+    border-color: {self.accent};
 }}
 
 QTabBar::tab:hover:!selected {{
@@ -310,7 +301,7 @@ QTabBar::tab:hover:!selected {{
 
 QScrollBar:vertical {{
     background-color: {self.scrollbar_bg};
-    width: 10px;
+    width: 12px;
     border: none;
     border-radius: 5px;
 }}
@@ -331,7 +322,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 
 QScrollBar:horizontal {{
     background-color: {self.scrollbar_bg};
-    height: 10px;
+    height: 12px;
     border: none;
     border-radius: 5px;
 }}

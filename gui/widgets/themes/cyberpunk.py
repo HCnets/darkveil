@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class CyberpunkTheme(ThemeBase):
     name = "cyberpunk"
     display_name = "Cyberpunk"
@@ -204,16 +203,7 @@ QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
 }}
 
 QComboBox::drop-down {{
-    border: none;
     width: 24px;
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid {self.accent};
-    margin-right: 6px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -324,7 +314,7 @@ QTabBar::tab:hover:!selected {{
 
 QScrollBar:vertical {{
     background-color: {self.scrollbar_bg};
-    width: 8px;
+    width: 12px;
     border: none;
 }}
 
@@ -344,7 +334,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 
 QScrollBar:horizontal {{
     background-color: {self.scrollbar_bg};
-    height: 8px;
+    height: 12px;
     border: none;
 }}
 

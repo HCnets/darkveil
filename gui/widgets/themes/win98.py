@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class Win98Theme(ThemeBase):
     name = "win98"
     display_name = "Windows 98"
@@ -98,7 +97,7 @@ QPushButton {{
     border-right-color: #404040;
     border-bottom-color: #404040;
     padding: 4px 12px;
-    min-height: 28px;
+    min-height: 20px;
     font-size: 8pt;
 }}
 
@@ -111,7 +110,7 @@ QPushButton:pressed {{
     border-color: #404040;
     border-right-color: #ffffff;
     border-bottom-color: #ffffff;
-    padding: 4px 9px 2px 11px;
+    padding: 5px 10px 3px 12px;
 }}
 
 QPushButton:disabled {{
@@ -182,8 +181,8 @@ QLabel#title {{
 QLineEdit, QSpinBox {{
     background-color: #ffffff;
     border: 2px inset #808080;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-size: 8pt;
     color: #000000;
 }}
@@ -192,31 +191,23 @@ QLineEdit:focus, QSpinBox:focus {{
     border-color: #000080;
 }}
 
+QComboBox:focus {{
+    border-color: #000080;
+}}
+
 QComboBox {{
     background-color: #c0c0c0;
     border: 2px outset #ffffff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-size: 8pt;
     color: #000000;
 }}
 
 QComboBox::drop-down {{
-    border: 2px outset #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
     width: 18px;
-    background-color: #c0c0c0;
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 3px solid transparent;
-    border-right: 3px solid transparent;
-    border-top: 3px solid #000000;
-    margin-right: 4px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -338,10 +329,6 @@ QTabBar::tab:selected {{
     border-bottom: 1px solid #ffffff;
 }}
 
-QTabBar::tab:hover:!selected {{
-    background-color: #d0d0d0;
-}}
-
 QProgressBar {{
     background-color: #c0c0c0;
     border: 2px inset #808080;
@@ -363,15 +350,24 @@ QTextBrowser#terminal {{
     padding: 4px;
 }}
 
+QTextEdit#terminal {{
+    background-color: #000000;
+    color: #00ff00;
+    border: 2px inset #808080;
+    font-family: "Fixedsys", "Courier New", monospace;
+    font-size: 10pt;
+    padding: 4px;
+}}
+
 QCheckBox {{
-    spacing: 4px;
+    spacing: 5px;
     color: #000000;
     background: transparent;
 }}
 
 QCheckBox::indicator {{
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     border: 2px inset #808080;
     background-color: #ffffff;
 }}

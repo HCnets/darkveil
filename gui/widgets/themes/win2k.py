@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class Win2000Theme(ThemeBase):
     name = "win2000"
     display_name = "Windows 2000"
@@ -100,8 +99,8 @@ QPushButton {{
     border: 2px outset #ffffff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    padding: 5px 12px;
-    min-height: 28px;
+    padding: 4px 12px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
 }}
@@ -136,12 +135,22 @@ QPushButton#primary:hover {{
 
 QPushButton#primary:pressed {{
     border-style: inset;
+    border-color: #0a1a30;
 }}
 
 QPushButton#danger {{
     background-color: #8b0000;
     color: #ffffff;
     border: 2px outset #c04040;
+}}
+
+QPushButton#danger:hover {{
+    background-color: #a02020;
+}}
+
+QPushButton#danger:pressed {{
+    border-style: inset;
+    border-color: #400000;
 }}
 
 QFrame#panel, QGroupBox {{
@@ -179,8 +188,8 @@ QLabel#title {{
 QLineEdit, QSpinBox {{
     background-color: #ffffff;
     border: 2px inset #808080;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
     color: #000000;
@@ -195,27 +204,19 @@ QComboBox {{
     border: 2px outset #ffffff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    padding: 2px 4px;
-    min-height: 18px;
+    padding: 3px 6px;
+    min-height: 20px;
     font-family: "Tahoma";
     font-size: 8pt;
     color: #000000;
 }}
 
-QComboBox::drop-down {{
-    border: 2px outset #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
-    width: 20px;
-    background-color: #d4d0c8;
+QComboBox:focus {{
+    border-color: #1f3460;
 }}
 
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 3px solid transparent;
-    border-right: 3px solid transparent;
-    border-top: 4px solid #000000;
-    margin-right: 4px;
+QComboBox::drop-down {{
+    width: 20px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -341,10 +342,6 @@ QTabBar::tab:selected {{
     border-bottom: 1px solid #ffffff;
 }}
 
-QTabBar::tab:hover:!selected {{
-    background-color: #c8c4b8;
-}}
-
 QProgressBar {{
     background-color: #d4d0c8;
     border: 2px inset #808080;
@@ -368,16 +365,25 @@ QTextBrowser#terminal {{
     padding: 4px;
 }}
 
+QTextEdit#terminal {{
+    background-color: #000000;
+    color: #c0c0c0;
+    border: 2px inset #808080;
+    font-family: "Lucida Console", "Consolas", monospace;
+    font-size: 9pt;
+    padding: 4px;
+}}
+
 QCheckBox {{
-    spacing: 4px;
+    spacing: 5px;
     color: #000000;
     background: transparent;
     font-family: "Tahoma";
 }}
 
 QCheckBox::indicator {{
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     border: 2px inset #808080;
     background-color: #ffffff;
 }}

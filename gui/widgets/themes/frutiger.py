@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class FrutigerAeroTheme(ThemeBase):
     name = "frutiger"
     display_name = "Frutiger Aero"
@@ -219,6 +218,12 @@ QPushButton#danger:hover {{
         stop:0.5 #f05050, stop:1 #d03030);
 }}
 
+QPushButton#danger:pressed {{
+    background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+        stop:0 #c02020, stop:0.5 #d03030, stop:1 #e04040);
+    border-top-color: #a01010;
+}}
+
 /* === Frutiger Inputs - Soft Inset === */
 QLineEdit, QSpinBox, QComboBox {{
     background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
@@ -239,18 +244,7 @@ QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
 }}
 
 QComboBox::drop-down {{
-    border: none;
     width: 28px;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #0070b0;
-    margin-right: 8px;
 }}
 
 QComboBox QAbstractItemView {{

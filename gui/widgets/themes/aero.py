@@ -1,6 +1,5 @@
 from .engine import ThemeBase
 
-
 class AeroTheme(ThemeBase):
     name = "aero"
     display_name = "Windows 7 Aero"
@@ -266,8 +265,8 @@ QLineEdit, QSpinBox, QComboBox {{
     background-color: #ffffff;
     border: 1px solid #7a98b8;
     border-radius: 3px;
-    padding: 5px 8px;
-    min-height: 20px;
+    padding: 6px 8px;
+    min-height: 28px;
     color: #1a1a1a;
     selection-background-color: #3399ff;
     selection-color: #ffffff;
@@ -278,16 +277,7 @@ QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
 }}
 
 QComboBox::drop-down {{
-    border: none;
     width: 24px;
-}}
-
-QComboBox::down-arrow {{
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #4a6880;
-    margin-right: 6px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -423,7 +413,7 @@ QTabBar::tab:hover:!selected {{
    ================================================================ */
 QScrollBar:vertical {{
     background-color: #f0f0f0;
-    width: 14px;
+    width: 12px;
     border: 1px solid #c0c8d0;
     border-radius: 7px;
 }}
@@ -455,7 +445,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 
 QScrollBar:horizontal {{
     background-color: #f0f0f0;
-    height: 14px;
+    height: 12px;
     border: 1px solid #c0c8d0;
     border-radius: 7px;
 }}
